@@ -16,8 +16,8 @@ return new class extends Migration
             $table->integer('cantidad');
             $table->decimal('precio_unitario', 12,2);
             $table->decimal('subtotal', 12,2);
-            $table->unsignedBigInteger('devolucion_id');
-            $table->foreign('devolucion_id')->references('id')->on('devoluciones_compras');
+            $table->unsignedBigInteger('devolucion_compra_id');
+            $table->foreign('devolucion_compra_id')->references('id')->on('devoluciones_compras');
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
             $table->timestamps();
