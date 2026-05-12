@@ -28,14 +28,16 @@ class CMMPRequest extends FormRequest
     public function rules(): array
     {
         //Obtenemos el id y extraemos la peticion
-        $id = $this->route('categoria');
+        $id = $this->route('categoria') ?? $this->route('marca');
+        //Obtenemos la URL actual y verificamos si contiene la ruta deseada
+        $tabla = str_contains($this->path(), 'categorias') ? 'categorias' : 'marcas';
             return [
                 'nombre' => [
                     'required',
                     'string',
                     'min:2',
                     'max:50',
-                    Rule::unique('categorias', 'nombre')->ignore($id)
+                    Rule::unique($tabla, 'nombre')->ignore($id)
             ]
         ];
     }

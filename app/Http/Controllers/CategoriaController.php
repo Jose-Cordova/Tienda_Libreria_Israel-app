@@ -63,6 +63,7 @@ class CategoriaController extends Controller
             return response()->json([
                 'message' => 'Categoria no encontrada.'
             ], 404);
+
         }catch(\Exception $e){
             return response()->json([
                 'message' => 'Error interno en el servidor.'
