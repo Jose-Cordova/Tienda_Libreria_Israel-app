@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 //Conroladores
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\UnidadMedidaController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -12,3 +15,5 @@ Route::get('/user', function (Request $request) {
 
 //Rutas
 Route::apiResource('categorias', CategoriaController::class);
+Route::apiResource('marcas', MarcaController::class);
+Route::apiResource('unidadesmedidas', UnidadMedidaController::class);
