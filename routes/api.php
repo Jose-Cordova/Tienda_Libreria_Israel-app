@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 //Controladores
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\UnidadMedidaController;
+
 use App\Http\Controllers\AuthController;
 
 Route::get('/user', function (Request $request) {
@@ -23,3 +26,5 @@ Route::middleware('auth:api')->group(function () {
 
 //Rutas
 Route::apiResource('categorias', CategoriaController::class);
+Route::apiResource('marcas', MarcaController::class);
+Route::apiResource('unidadesmedidas', UnidadMedidaController::class);
