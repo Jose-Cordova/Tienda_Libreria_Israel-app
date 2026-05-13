@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Run the migrations. Vino tony al ataque
      */
     public function up(): void
     {
@@ -18,6 +18,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->enum('estado', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
+            $table->foreignId('rol_id')->constrained('roles'); // FK hacia roles
             $table->rememberToken();
             $table->timestamps();
         });
