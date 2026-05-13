@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\Categoria;
@@ -86,6 +85,10 @@ class CategoriaController extends Controller
                 'categoria' => $categoria
             ], 200);
 
+        }catch(ModelNotFoundException $e){
+            return response()->json([
+                'message' => 'Categoria no encontrada.'
+            ], 404);
         }catch(\Exception $e){
             return response()->json([
                 'message' => 'Error interno en el servidor.'
