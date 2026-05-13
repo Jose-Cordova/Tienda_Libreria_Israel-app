@@ -5,9 +5,13 @@ use Illuminate\Support\Facades\Route;
 
 //Controladores
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ClienteCreditoController;
+use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\UnidadMedidaController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MetodoPagoContoller;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -25,5 +29,9 @@ Route::middleware('auth:api')->group(function () {
 
 //Rutas
 Route::apiResource('categorias', CategoriaController::class);
+Route::apiResource('metodos-pagos', MetodoPagoContoller::class);
+Route::apiResource('clientes-creditos', ClienteCreditoController::class);
+Route::apiResource('marcas', MarcaController::class);
+Route::apiResource('unidadesmedidas', UnidadMedidaController::class);
 Route::apiResource('proveedores', ProveedorController::class);
 Route::apiResource('compras', CompraController::class);
