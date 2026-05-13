@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
-class CMMPRequest extends FormRequest
+class UMRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -28,18 +28,17 @@ class CMMPRequest extends FormRequest
     public function rules(): array
     {
         //Obtenemos el id y extraemos la peticion
-        $id = $this->route('categoria') ?? $this->route('marca');
-        //Obtenemos la URL actual y verificamos si contiene la ruta deseada
-        $tabla = str_contains($this->path(), 'categorias') ? 'categorias' : 'marcas';
-            return [
-                'nombre' => [
-                    'required',
-                    'string',
-                    'min:2',
-                    'max:50',
-                    Rule::unique($tabla, 'nombre')->ignore($id)
-            ]
-        ];
+        $id = $this->route('unidadmedida');
+
+    return [
+        'nombre' => [
+            'required', 'string', 'min:2', 'max:50',
+            Rule::unique('unidades_medidas', 'nombre')->ignore($id)
+        ],
+        'equivalencia' => [
+            'required', 'string', 'min:2', 'max:50',
+        ],
+    ];
     }
     //Definimos los mensajes para cada cosa que falle
     public function messages()
@@ -47,8 +46,12 @@ class CMMPRequest extends FormRequest
         return [
         'nombre.required' => 'El nombre es obligatorio.',
         'nombre.min' => 'El nombre debe tener al menos 2 caracteres.',
-        'nombre.unique' => 'Ya existe una categoría con este nombre.',
-        'nombre.unique' => 'Ya existe una marca con este nombre.'
+        'nombre.max' => 'El nombre no debe tener mas de 50 caracteres.',
+        'nombre.unique' => 'Ya existe una unidad de medida con este nombre.',
+        'equivalencia.required' => 'La equivalencia es obligatoria.',
+        'equivalencia.min' => 'La equivalencia debe tener al menos 2 caracteres.',
+        'equivalencia.max' => 'La equivalencia no debe tener mas de 50 caracteres.',
+
         ];
     }
     //Si la validacion falla se ejecuta la funcion
