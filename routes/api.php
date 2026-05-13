@@ -2,9 +2,11 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MetodoPagoContoller;
 
 //Controladores
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ClienteCreditoController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\UnidadMedidaController;
 
@@ -26,5 +28,7 @@ Route::middleware('auth:api')->group(function () {
 
 //Rutas
 Route::apiResource('categorias', CategoriaController::class);
+Route::apiResource('metodos-pagos', MetodoPagoContoller::class);
+Route::apiResource('clientes-creditos', ClienteCreditoController::class);
 Route::apiResource('marcas', MarcaController::class);
 Route::apiResource('unidadesmedidas', UnidadMedidaController::class);
