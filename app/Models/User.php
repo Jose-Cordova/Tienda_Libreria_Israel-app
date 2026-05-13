@@ -6,8 +6,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
@@ -21,7 +22,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'estado'    
+        'estado',
+        'rol' // guardar los roles
     ];
 
     /**
@@ -47,14 +49,30 @@ class User extends Authenticatable
         ];
     }
 
+    //identifica quién es el usuario\\
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    //agrega información extra útil para no hacer consultas innecesarias\\
+    public function getJWTCustomClaims()
+    {
+        return [
+            'rol' => $this->rol,
+        ];
+    }
+
     public function notas()
     {
         return $this->hasMany(Nota::class);
     }
+
     public function ventas()
     {
         return $this->hasMany(Venta::class);
     }
+
     public function compras()
     {
         return $this->hasMany(Compra::class);
