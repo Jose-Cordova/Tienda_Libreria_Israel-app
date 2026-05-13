@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 
 //Controladores
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\CompraController;
 use App\Http\Controllers\AuthController;
 
 Route::get('/user', function (Request $request) {
@@ -18,8 +20,10 @@ Route::post('login',  [AuthController::class, 'login']);
 Route::middleware('auth:api')->group(function () {
     Route::post('logout',  [AuthController::class, 'logout']);
     Route::post('refresh', [AuthController::class, 'refresh']);
-    Route::get('me',       [AuthController::class, 'me']);
+    Route::get('me', [AuthController::class, 'me']);
 });
 
 //Rutas
 Route::apiResource('categorias', CategoriaController::class);
+Route::apiResource('proveedores', ProveedorController::class);
+Route::apiResource('compras', CompraController::class);
