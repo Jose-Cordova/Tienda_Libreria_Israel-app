@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('compras', function (Blueprint $table) {
             $table->id();
             $table->date('fecha_registro');
-            $table->string('numero_factura', 50);
+            $table->string('numero_factura', 50)->unique();
             $table->string('codigo_factura', 50);
             $table->date('fecha_emision');
             $table->decimal('total', 12,2);
-            $table->enum('estado', ['PAGADA', 'ANULADA'])->default('PAGADA');
+            $table->enum('estado', ['REGISTRADA', 'ANULADA'])->default('REGISTRADA');
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users');
             $table->unsignedBigInteger('proveedor_id');
