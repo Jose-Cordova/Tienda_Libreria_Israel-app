@@ -2,16 +2,28 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasRoles;
+
+    //Sobreescribimos la variable $guard_name
+    protected $guard_name = 'api';
+
+    //Implementacion de los metodos JWT
+    public function getJWTIdentifier(){
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims(){
+        return [];
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -22,8 +34,7 @@ class User extends Authenticatable implements JWTSubject
         'name',
         'email',
         'password',
-        'estado',
-        'rol' // guardar los roles
+        'estado'
     ];
 
     /**
@@ -46,20 +57,6 @@ class User extends Authenticatable implements JWTSubject
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-        ];
-    }
-
-    //identifica quién es el usuario\\
-    public function getJWTIdentifier()
-    {
-        return $this->getKey();
-    }
-
-    //agrega información extra útil para no hacer consultas innecesarias\\
-    public function getJWTCustomClaims()
-    {
-        return [
-            'rol' => $this->rol,
         ];
     }
 
