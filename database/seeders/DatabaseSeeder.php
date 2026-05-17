@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
     {
         // 1. Ejecutar seeders externos primero (ej. Roles y Permisos)
         $this->call([
-            RolesSeeder::class,
+            RoleSeeder::class,
             // OtrosSeeders::class,
         ]);
 
