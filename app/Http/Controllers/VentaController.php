@@ -63,10 +63,11 @@ class VentaController extends Controller
      */
     public function store(Request $request)
     {
-        try{
+    try{
 
         //validamos la data que viene por $request
         $data = $request->validate([
+
             //validaciones de venta
             'user_id' => 'required|exists:users,id',
             'metodo_pago_id' => 'required|exists:metodos_pagos,id',
@@ -106,7 +107,7 @@ class VentaController extends Controller
             //buscamos el producto
             $producto = Producto::findOrFail($detalle['producto_id']);
 
-            //validamos stock del producto
+            //validamos stock general del producto
             if($producto->stock < $detalle['cantidad']){
 
                 DB::rollBack();
@@ -121,24 +122,86 @@ class VentaController extends Controller
                 ? $producto->precio_mayor
                 : $producto->precio_detalle;
 
-            //calculamos subtotal del detalle
-            $subtotal = $precio * $detalle['cantidad'];
+            //cantidad restante a descontar
+            $cantidadRestante = $detalle['cantidad'];
 
-            //registramos detalle de venta
-            DetalleVenta::create([
-                'cantidad' => $detalle['cantidad'],
-                'precio_unitario' => $precio,
-                'subtotal' => $subtotal,
-                'producto_id' => $producto->id,
-                'venta_id' => $venta->id
+            //obtenemos lotes FIFO del producto
+            $lotes = $producto->lotes()
+                ->where('estado', 'ACTIVO')
+                ->where('cantidad_actual', '>', 0)
+                ->orderBy('fecha_ingreso', 'asc')
+                ->get();
+
+            //validamos existencia de lotes
+            if($lotes->isEmpty()){
+
+                DB::rollBack();
+
+                return response()->json([
+                    'message' => 'No existen lotes disponibles para el producto '.$producto->nombre
+                ], 400);
+            }
+
+            //recorremos lotes para aplicar FIFO
+            foreach($lotes as $lote){
+
+                //omitimos lotes vencidos
+                if($lote->fecha_vencimiento < now()->toDateString()){
+                    continue;
+                }
+
+                //si ya no queda cantidad salimos
+                if($cantidadRestante <= 0){
+                    break;
+                }
+
+                //cantidad que descontaremos del lote actual
+                $descuento = min($cantidadRestante, $lote->cantidad_actual);
+
+                //calculamos subtotal del lote
+                $subtotal = $precio * $descuento;
+
+                //registramos detalle de venta
+                DetalleVenta::create([
+                    'cantidad' => $descuento,
+                    'precio_unitario' => $precio,
+                    'subtotal' => $subtotal,
+                    'producto_id' => $producto->id,
+                    'lote_id' => $lote->id,
+                    'venta_id' => $venta->id
+                ]);
+
+                //descontamos stock del lote
+                $lote->cantidad_actual -= $descuento;
+
+                //si el lote llega a 0 cambiamos estado
+                if($lote->cantidad_actual <= 0){
+                    $lote->estado = 'INACTIVO';
+                }
+
+                $lote->save();
+
+                //restamos cantidad restante
+                $cantidadRestante -= $descuento;
+
+                //sumamos subtotal al total venta
+                $totalVenta += $subtotal;
+            }
+
+            //validamos si no se pudo cubrir toda la cantidad
+            if($cantidadRestante > 0){
+
+                DB::rollBack();
+
+                return response()->json([
+                    'message' => 'Stock insuficiente en lotes para el producto '.$producto->nombre
+                ], 400);
+            }
+
+            //descontamos stock general del producto
+            $producto->update([
+                'stock' => $producto->stock - $detalle['cantidad']
             ]);
-
-            //descontamos stock del producto
-            $producto->stock -= $detalle['cantidad'];
-            $producto->save();
-
-            //sumamos subtotal al total de venta
-            $totalVenta += $subtotal;
         }
 
         //actualizamos total final de la venta
@@ -167,6 +230,7 @@ class VentaController extends Controller
                 'user',
                 'metodoPago',
                 'detalleVentas.producto',
+                'detalleVentas.lote',
                 'credito'
             ])
         ], 201);
@@ -183,7 +247,7 @@ class VentaController extends Controller
         ], 500);
 
     }
-    }
+}
 
     /**
      * Display the specified resource.

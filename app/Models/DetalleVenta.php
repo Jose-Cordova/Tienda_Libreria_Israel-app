@@ -27,4 +27,8 @@ class DetalleVenta extends Model
     {
         return $this->belongsTo(Producto::class);
     }
+    public function lote()
+    {
+    return $this->belongsTo(Lote::class);
+    }
 }
