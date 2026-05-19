@@ -11,8 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    //Registrar los middlewares de Spatie para el control de roles y permisos
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->alias([
+        //Middleware para proteger rutas por rol (ADMIN, CLIENTE)
+        'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

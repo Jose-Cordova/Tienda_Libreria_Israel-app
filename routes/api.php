@@ -34,5 +34,10 @@ Route::apiResource('metodos-pagos', MetodoPagoContoller::class);
 Route::apiResource('clientes-creditos', ClienteCreditoController::class);
 Route::apiResource('marcas', MarcaController::class);
 Route::apiResource('unidadesmedidas', UnidadMedidaController::class);
-Route::apiResource('proveedores', ProveedorController::class);
 Route::apiResource('compras', CompraController::class);
+
+Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
+    Route::apiResource('proveedores', ProveedorController::class);
+    Route::apiResource('compras', CompraController::class);
+    Route::post('compras/{id}/anular', [CompraController::class, 'anular']);
+});
