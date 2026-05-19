@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Venta;
 use App\Models\Credito;
 use App\Models\Producto;
+use App\Models\ClienteCredito;
 use App\Models\DetalleVenta;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
