@@ -6,66 +6,74 @@ use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use App\Models\Producto;
 
 class CompraRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        //Verificar si el usuario actual esta autorizado para hacer esta accion
+        return auth()->check();
     }
-
+    //Definimos las reglas de validacion
     public function rules(): array
     {
         return [
+            //Validacion para factura
             'numero_factura' => [
                 'required',
                 'string',
                 'max:50',
+                //Validamos que el numero de la factura debe ser unico entre proveedor
                 Rule::unique('compras', 'numero_factura')
-                    ->where('proveedor_id', $this->input('proveedor_id'))],
+                    ->where('proveedor_id', $this->input('proveedor_id'))], //Proveedor enviado por la peticion
 
             'codigo_factura' => 'required|string|max:50',
             'fecha_emision' => 'required|date',
             'proveedor_id' => 'required|exists:proveedores,id',
-
+            //Validacion para los detalles de compras
             'detalles' => 'required|array|min:1',
             'detalles.*.producto_id' => 'nullable|exists:productos,id',
             'detalles.*.cantidad' => 'required|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric|min:0.01',
             'detalles.*.margen_detalle' => 'required|numeric|min:0.01',
             'detalles.*.margen_mayor' => 'required|numeric|min:0.01',
-
+            //Validacion para producto nuevo
             'detalles.*.nombre' => 'nullable|string|max:100',
             'detalles.*.stock_minimo' => 'nullable|integer|min:1',
             'detalles.*.perecedero' => 'nullable|in:NORMAL,PERECEDERO',
             'detalles.*.marca_id' => 'nullable|exists:marcas,id',
             'detalles.*.categoria_id' => 'nullable|exists:categorias,id',
             'detalles.*.unidad_medida_id' => 'nullable|exists:unidades_medidas,id',
+            //Validacion para los lotes cuando el prodcuto es perecedero
             'detalles.*.codigo_lote' => 'nullable|string|max:50',
             'detalles.*.fecha_vencimiento' => 'nullable|date|after:today'
         ];
     }
-
+    //Agregamos validaciones adicionales
     public function withValidator(Validator $validator): void
     {
+        //Obtenemos los detalles de la compra y los almanenamos para detectetar si hay duplicados
         $validator->after(function ($validator){
             $detalles = $this->input('detalles', []);
             $productosExistentes = [];
-
+            //Recorremos cada producto del detalle enviado en la compra y lo obtenemos
             foreach($detalles as $index => $detalle){
                 $productoId = $detalle['producto_id'] ?? null;
                 $num = $index + 1;
 
                 if(!is_null($productoId)){
-                    // Validar duplicados de productos existentes
+                    //Validamos si el producto ya esta en el detalle
                     if(in_array($productoId, $productosExistentes)){
                         $validator->errors()->add(
                             "detalles.$index.producto_id",
                             "El producto (ID: $productoId) ya fue agregado en otro detalle."
                         );
                     }else{
+                        //Si no existe lo guardamos en el array
                         $productosExistentes[] = $productoId;
                     }
+                //En caso de que el producto no exista
                 }else{
                     // Validar campos para producto nuevo
                     $camposRequeridos = [
@@ -76,8 +84,9 @@ class CompraRequest extends FormRequest
                         'categoria_id' => 'La categoría',
                         'unidad_medida_id' => 'La unidad de medida'
                     ];
-
+                    //Recorremos cada uno de los campos para el producto nuevo
                     foreach($camposRequeridos as $campo => $etiqueta){
+                        //Comprobamos que el campo no este vacio
                         if(empty($detalle[$campo])){
                             $validator->errors()->add(
                                 "detalles.$index.$campo",
@@ -86,15 +95,16 @@ class CompraRequest extends FormRequest
                         }
                     }
                 }
-
-                // Validar lote si es perecedero
+                // Validar lote si el producto es perecedero
                 if($this->esProductoPerecedero($detalle)){
+                    //Verficamos que no falte el codigo de lote
                     if (empty($detalle['codigo_lote'])) {
                         $validator->errors()->add(
                             "detalles.$index.codigo_lote",
                             "El código de lote es requerido para el producto perecedero en el detalle #$num."
                         );
                     }
+                    //Verificamos que no falte la fecha de vencimiento
                     if(empty($detalle['fecha_vencimiento'])){
                         $validator->errors()->add(
                             "detalles.$index.fecha_vencimiento",
@@ -105,18 +115,19 @@ class CompraRequest extends FormRequest
             }
         });
     }
-
+    //Funcion que recibe un array de los datos de un detalle
     protected function esProductoPerecedero(array $detalle): bool
     {
+        //Obtenemos el producto del detalle
         $productoId = $detalle['producto_id'] ?? null;
-
+        //Si es producto nuevo se le agrega que es perecedero y si no normal
         if(is_null($productoId)){
             return ($detalle['perecedero'] ?? '') === 'PERECEDERO';
         }
-
+        //Si el producto existe se consulta y devuelve true si es perecedero
         return Producto::where('id', $productoId)->value('perecedero') === 'PERECEDERO';
     }
-
+    //Definimos los mensajes por si no se cumplen las validaciones
     public function messages(): array
     {
         return [
@@ -144,9 +155,10 @@ class CompraRequest extends FormRequest
             'detalles.*.stock_minimo.min' => 'El stock mínimo debe ser al menos 1.',
         ];
     }
-
+    //Si las validaciones fallan se ejecuta esta funcion
     protected function failedValidation(Validator $validator)
     {
+        //Se interrumpe la ejecucion y se lanza una exepcion
         throw new HttpResponseException(
             response()->json([
                 'message' => 'Error de validacion.',
