@@ -222,7 +222,7 @@ class CompraController extends Controller
             //Validamos que la compra sea del dia actual
             if($compra->fecha_registro->toDateString() != now()->toDateString()){
                 return response()->json([
-                    'message' => 'No se puede anular una compra de días anteriores. Utilice una devolución de compra.'
+                    'message' => 'No se puede anular una compra de días anteriores.'
                 ], 409);
             }
 
@@ -233,7 +233,7 @@ class CompraController extends Controller
                 //Verificamos que el stock no quede negativo
                 if($producto->stock - $detalle->cantidad < 0){
                     return response()->json([
-                        'message' => "No se puede anular la compra. El producto '{$producto->nombre}' tiene ventas posteriores y su stock quedaría negativo."
+                        'message' => "No se puede anular la compra. El producto '{$producto->nombre}' tiene ventas posteriores."
                     ], 409);
                 }
                 //Si el producto es perecedero verificar el lote correspondiente no se haya vendido
