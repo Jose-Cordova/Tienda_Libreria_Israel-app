@@ -82,7 +82,11 @@ class VentaController extends Controller
             'detalle.*.cantidad' => 'required|integer|min:1',
 
             //validaciones adicionales si la venta es credito
-            'cliente_credito_id' => 'required_if:estado,CREDITO|exists:clientes_creditos,id'
+            'cliente_credito_id' => 'nullable|exists:clientes_creditos,id',
+
+            'nombre' => 'required_without:cliente_credito_id|string|max:50',
+            'dui' => 'required_without:cliente_credito_id|string|max:10|unique:clientes_creditos,dui',
+            'telefono' => 'required_without:cliente_credito_id|string|max:9',
         ]);
 
         //iniciamos transaccion
@@ -211,15 +215,33 @@ class VentaController extends Controller
         ]);
 
         //registramos credito si el estado de venta es credito
-        if($data['estado'] == 'CREDITO'){
+        //registramos credito si el estado de venta es credito
+if($data['estado'] == 'CREDITO'){
 
-            Credito::create([
-                'monto_adeudado' => $totalVenta,
-                'saldo' => $totalVenta,
-                'cliente_credito_id' => $data['cliente_credito_id'],
-                'venta_id' => $venta->id
-            ]);
-        }
+    //si no existe cliente_credito lo registramos
+    if(empty($data['cliente_credito_id'])){
+
+        $clienteCredito = ClienteCredito::create([
+            'nombre' => $data['nombre'],
+            'dui' => $data['dui'],
+            'telefono' => $data['telefono']
+        ]);
+
+    }else{
+
+        //si existe lo buscamos
+        $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
+    }
+
+    //registramos credito
+    Credito::create([
+        'monto_adeudado' => $totalVenta,
+        'saldo' => 0,
+        'fecha_cancelada' => null,
+        'cliente_credito_id' => $clienteCredito->id,
+        'venta_id' => $venta->id
+    ]);
+}
 
         //confirmamos transaccion
         DB::commit();
@@ -255,7 +277,31 @@ class VentaController extends Controller
      */
     public function show(string $id)
     {
-        //
+        try{
+
+        //buscamos venta
+        $venta = Venta::with([
+            'user',
+            'metodoPago',
+            'detalleVentas.producto',
+            'detalleVentas.lote',
+            'credito.clienteCredito'
+        ])->findOrFail($id);
+
+        //retornamos venta
+        return response()->json([
+            'venta' => $venta
+        ], 200);
+
+    }catch(Exception $e){
+
+        //retornamos error
+        return response()->json([
+            'message' => 'Error al mostrar la venta',
+            'error' => $e->getMessage()
+        ], 500);
+
+    }
     }
 
     /**

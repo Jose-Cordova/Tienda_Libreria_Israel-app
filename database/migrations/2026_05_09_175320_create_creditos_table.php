@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->decimal('monto_adeudado', 12,2);
             $table->decimal('saldo', 12,2);
-            $table->date('fecha_cancelada');
+            $table->date('fecha_cancelada')->nullable();
             $table->unsignedBigInteger('venta_id');
             $table->foreign('venta_id')->references('id')->on('ventas');
             $table->unsignedBigInteger('cliente_credito_id');
