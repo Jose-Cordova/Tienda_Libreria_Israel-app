@@ -21,11 +21,13 @@ class VentaController extends Controller
     {
         try{
 
+        //consulta base
         $query = Venta::with([
             'user',
             'metodoPago',
             'detalleVentas.producto',
-
+            'detalleVentas.lote',
+            'credito.clienteCredito'
         ]);
 
         //filtrar por estado de la venta
@@ -40,18 +42,45 @@ class VentaController extends Controller
 
         //filtrar por tipo de cliente
         if($request->tipoCliente){
-            $query->where('tipoCliente', $request->tipoCliente);
+            $query->where('tipo_cliente', $request->tipoCliente);
         }
 
-        //orden en que se mostrarán las ventas
+        //filtrar por estado del producto
+        if($request->estado_producto){
+
+            $query->whereHas('detalleVentas.producto', function($q) use ($request){
+
+                $q->where('estado', $request->estado_producto);
+
+            });
+        }
+
+        //filtrar por metodo de pago
+        if($request->metodo_pago_id){
+            $query->where('metodo_pago_id', $request->metodo_pago_id);
+        }
+
+        //filtrar por fecha inicial
+        if($request->fecha_inicio){
+            $query->whereDate('fecha', '>=', $request->fecha_inicio);
+        }
+
+        //filtrar por fecha final
+        if($request->fecha_fin){
+            $query->whereDate('fecha', '<=', $request->fecha_fin);
+        }
+
+        //ordenamos por fecha descendente
         $ventas = $query->orderBy('fecha', 'desc')->get();
 
-        return response()->json($ventas);
+        //retornamos respuesta
+        return response()->json($ventas, 200);
 
     }catch(Exception $e){
 
+        //retornamos error
         return response()->json([
-            'message' => 'Error al obtener el listado de ventas',
+            'message' => 'Error al mostrar las ventas',
             'error' => $e->getMessage()
         ], 500);
 
@@ -85,7 +114,7 @@ class VentaController extends Controller
 
             'nombre' => 'nullable|string|max:50',
             'dui' => 'nullable|string|max:10|unique:clientes_creditos,dui',
-            'telefono' => 'nullable|string|max:10',
+            'telefono' => 'nullable|string|max:20|unique:clientes_creditos,telefono',
         ]);
 
         //iniciamos transaccion
@@ -117,7 +146,7 @@ class VentaController extends Controller
                 DB::rollBack();
 
                 return response()->json([
-                    'message' => 'Stock insuficiente para el producto '.$producto->nombre
+                    'message' => 'Stock insuficiente para el producto '. $producto->nombre . '  le queda la cantidad restante de  ' . $producto->stock
                 ], 400);
             }
 
