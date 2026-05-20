@@ -30,6 +30,10 @@ class Compra extends Model
     {
         return $this->hasMany(DevolucionCompra::class);
     }
+    public function lotes()
+    {
+        return $this->hasMany(Lote::class);
+    }
     public function proveedor()
     {
         return $this->belongsTo(Proveedor::class);

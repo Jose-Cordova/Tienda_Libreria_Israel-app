@@ -86,23 +86,33 @@ class CompraController extends Controller
                     $producto = Producto::findOrFail($detalle['producto_id']);
                     $esProductoNuevo = false;
 
-                    //Si el prod esta inactivo por una anulacion lo reactivamos
+                    //Si el producto esta inactivo por una anulacion lo reactivamos
                     if($producto->estado === 'INACTIVO'){
                         $producto->update(['estado' => 'ACTIVO']);
                     }
                 }
 
                 //Si el producto es perecedero se crea el lote correspondiente
-                if($this->esPerecedero($producto, $detalle)){
-                    Lote::create([
-                        'codigo_lote' => $detalle['codigo_lote'],
-                        'fecha_vencimiento' => $detalle['fecha_vencimiento'],
-                        'fecha_ingreso' => now(),
-                        'cantidad_inicial' => $detalle['cantidad'],
-                        'cantidad_actual' => $detalle['cantidad'],
-                        'estado' => 'ACTIVO',
-                        'producto_id' => $producto->id
-                    ]);
+                if($producto->perecedero === 'PERECEDERO'){
+                    //Para perecederos la cantidad total es la suma de todos los lotes
+                    $cantidadTotal = array_sum(array_column($detalle['lotes'], 'cantidad'));
+
+                    //Creamos cada lote del detalle
+                    foreach($detalle['lotes'] as $lote){
+                        Lote::create([
+                            'codigo_lote' => $lote['codigo_lote'],
+                            'fecha_vencimiento' => $lote['fecha_vencimiento'],
+                            'fecha_ingreso' => now(),
+                            'cantidad_inicial' => $lote['cantidad'],
+                            'cantidad_actual' => $lote['cantidad'],
+                            'estado' => 'ACTIVO',
+                            'producto_id' => $producto->id,
+                            'compra_id' => $compra->id
+                        ]);
+                    }
+                }else{
+                    //Para productos normales la cantidad viene directo en el detalle
+                    $cantidadTotal = $detalle['cantidad'];
                 }
 
                 //Calculamos los precios de venta al detalle y al mayor y actualizamos
@@ -115,12 +125,12 @@ class CompraController extends Controller
                 ]);
 
                 //Calculamos el suubtotal y acumulamos el total de la compra
-                $subTotal = $detalle['cantidad'] * $detalle['precio_unitario'];
+                $subTotal = $cantidadTotal * $detalle['precio_unitario'];
                 $totalCompra += $subTotal;
 
                 //Guardamos los detalles de las compras
                 DetalleCompra::create([
-                    'cantidad' => $detalle['cantidad'],
+                    'cantidad' => $cantidadTotal,
                     'precio_unitario' => $detalle['precio_unitario'],
                     'margen_detalle' => $detalle['margen_detalle'],
                     'margen_mayor' => $detalle['margen_mayor'],
@@ -130,7 +140,7 @@ class CompraController extends Controller
                     'producto_id' => $producto->id
                 ]);
                 //Incremnetamos el stock
-                $producto->increment('stock', $detalle['cantidad']);
+                $producto->increment('stock', $cantidadTotal);
             }
 
             //Actualizamos el total de la conpra
@@ -148,8 +158,7 @@ class CompraController extends Controller
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Error interno en el servidor.',
-                'ERROR' => $e->getMessage()
+                'message' => 'Error interno en el servidor.'
             ], 500);
         }
     }
@@ -239,18 +248,25 @@ class CompraController extends Controller
                 //Si el producto es perecedero verificar el lote correspondiente no se haya vendido
                 if($producto->perecedero === 'PERECEDERO'){
                     //Buscamos el lote creado en esta compra
-                    $lote = $producto->lotes->first(function($lote) use ($detalle){
-                        return $lote->fecha_ingreso->toDateString() === now()->toDateString() && $lote->cantidad_inicial == $detalle->cantidad;
-                    });
-                    if(!$lote){
+                    $lotes = $producto->lotes->filter(fn($lote) => $lote->compra_id === $compra->id);
+
+                    if($lotes->isEmpty()){
                         return response()->json([
                             'message' => "No se encontró el lote correspondiente para el producto '{$producto->nombre}'."
                         ], 409);
                     }
-                    //Verificamos si se a vendido algo del lote
-                    if($lote->cantidad_actual < $lote->cantidad_inicial){
+                    foreach($lotes as $lote){
+                        if ($lote->cantidad_actual < $lote->cantidad_inicial) {
+                            return response()->json([
+                                'message' => "No se puede anular. El lote '{$lote->codigo_lote}' del producto '{$producto->nombre}' ya fue parcialmente vendido."
+                            ], 409);
+                        }
+                    }
+                }else{
+                    //Para NORMAL solo verificamos que el stock no quede negativo
+                    if ($producto->stock - $detalle->cantidad < 0) {
                         return response()->json([
-                            'message' => "No se puede anular la compra. El lote del producto '{$producto->nombre}' ya fue parcialmente vendido."
+                            'message' => "No se puede anular. El producto '{$producto->nombre}' tiene ventas posteriores."
                         ], 409);
                     }
                 }
@@ -263,16 +279,10 @@ class CompraController extends Controller
 
                     //Revertimos el stock
                     $producto->decrement('stock', $detalle->cantidad);
-
-                    //Si es perecedero eliminamos el lote
-                    if($producto->perecedero === 'PERECEDERO'){
-                        $lote = $producto->lotes->first(function ($lote) use ($detalle){
-                            return $lote->fecha_ingreso->toDateString() === now()->toDateString() && $lote->cantidad_inicial == $detalle->cantidad;
-                        });
-                        if($lote){
-                            $lote->delete();
-                        }
-                    }
+                    //Eliminamos solo los lotes que pertenecen a esa compra
+                    $producto->lotes
+                        ->filter(fn($lote) => $lote->compra_id === $compra->id)
+                        ->each(fn($lote) => $lote->delete());
 
                     //Si el producto fue creado en esta compra lo inactivamos
                     if($detalle->es_producto_nuevo){
@@ -284,7 +294,6 @@ class CompraController extends Controller
                         }
                     }
                 }
-
                 //Marcamos la compra como anulada
                 $compra->update(['estado' => 'ANULADA']);
 

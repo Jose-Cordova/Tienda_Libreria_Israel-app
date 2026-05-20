@@ -34,7 +34,7 @@ class CompraRequest extends FormRequest
             //Validacion para los detalles de compras
             'detalles' => 'required|array|min:1',
             'detalles.*.producto_id' => 'nullable|exists:productos,id',
-            'detalles.*.cantidad' => 'required|integer|min:1',
+            'detalles.*.cantidad' => 'nullable|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric|min:0.01',
             'detalles.*.margen_detalle' => 'required|numeric|min:0.01',
             'detalles.*.margen_mayor' => 'required|numeric|min:0.01',
@@ -46,8 +46,10 @@ class CompraRequest extends FormRequest
             'detalles.*.categoria_id' => 'nullable|exists:categorias,id',
             'detalles.*.unidad_medida_id' => 'nullable|exists:unidades_medidas,id',
             //Validacion para los lotes cuando el prodcuto es perecedero
-            'detalles.*.codigo_lote' => 'nullable|string|max:50',
-            'detalles.*.fecha_vencimiento' => 'nullable|date|after:today'
+            'detalles.*.lotes' => 'nullable|array|min:1',
+            'detalles.*.lotes.*.codigo_lote' => 'nullable|string|max:50',
+            'detalles.*.lotes.*.fecha_vencimiento' => 'nullable|date|after:today',
+            'detalles.*.lotes.*.cantidad' => 'nullable|integer|min:1'
         ];
     }
     //Agregamos validaciones adicionales
@@ -67,7 +69,7 @@ class CompraRequest extends FormRequest
                     if(in_array($productoId, $productosExistentes)){
                         $validator->errors()->add(
                             "detalles.$index.producto_id",
-                            "El producto (ID: $productoId) ya fue agregado en otro detalle."
+                            "El producto con ID $productoId ya fue agregado en otro detalle."
                         );
                     }else{
                         //Si no existe lo guardamos en el array
@@ -76,6 +78,12 @@ class CompraRequest extends FormRequest
                 //En caso de que el producto no exista
                 }else{
                     // Validar campos para producto nuevo
+                //Determinamos si el producto es perecedero
+                $esPerecedero = $this->esProductoPerecedero($detalle);
+
+                //Validar producto nuevo
+                if(is_null($productoId)){
+                    //Validar campos para producto nuevo
                     $camposRequeridos = [
                         'nombre' => 'El nombre del producto',
                         'stock_minimo' => 'El stock mínimo',
@@ -94,27 +102,80 @@ class CompraRequest extends FormRequest
                             );
                         }
                     }
-                }
-                // Validar lote si el producto es perecedero
-                if($this->esProductoPerecedero($detalle)){
-                    //Verficamos que no falte el codigo de lote
-                    if (empty($detalle['codigo_lote'])) {
+                }else{
+                    //Validamos si el producto ya esta en el detalle
+                    if(in_array($productoId, $productosExistentes)){
                         $validator->errors()->add(
-                            "detalles.$index.codigo_lote",
-                            "El código de lote es requerido para el producto perecedero en el detalle #$num."
+                            "detalles.$index.producto_id",
+                            "El producto (ID: $productoId) ya fue agregado en otro detalle."
                         );
+                    }else{
+                        //Si no existe lo guardamos en el array
+                        $productosExistentes[] = $productoId;
                     }
-                    //Verificamos que no falte la fecha de vencimiento
-                    if(empty($detalle['fecha_vencimiento'])){
+                }
+
+                //Validar segun tipo de producto
+                if($esPerecedero){
+                    //Si es perecedero debe tener al menos un lote
+                    if(empty($detalle['lotes'])){
                         $validator->errors()->add(
-                            "detalles.$index.fecha_vencimiento",
-                            "La fecha de vencimiento es requerida para el producto perecedero en el detalle #$num."
+                            "detalles.$index.lotes",
+                            "El producto perecedero en el detalle #$num debe tener al menos un lote."
+                        );
+                    }else{
+                        //Validamos cada lote del detalle
+                        $lotesExistentes = [];
+                        foreach($detalle['lotes'] as $loteIndex => $lote){
+                            $numLote = $loteIndex + 1;
+
+                            //Verificamos que no falte el codigo de lote
+                            if(empty($lote['codigo_lote'])){
+                                $validator->errors()->add(
+                                    "detalles.$index.lotes.$loteIndex.codigo_lote",
+                                    "El código de lote es requerido en el lote #$numLote del detalle #$num."
+                                );
+                            }else{
+                                //Verificamos que no se repita el mismo codigo de lote
+                                if(in_array($lote['codigo_lote'], $lotesExistentes)){
+                                    $validator->errors()->add(
+                                        "detalles.$index.lotes.$loteIndex.codigo_lote",
+                                        "El código de lote '{$lote['codigo_lote']}' ya fue agregado en este detalle."
+                                    );
+                                }else{
+                                    $lotesExistentes[] = $lote['codigo_lote'];
+                                }
+                            }
+
+                            //Verificamos que no falte la fecha de vencimiento
+                            if(empty($lote['fecha_vencimiento'])){
+                                $validator->errors()->add(
+                                    "detalles.$index.lotes.$loteIndex.fecha_vencimiento",
+                                    "La fecha de vencimiento es requerida en el lote #$numLote del detalle #$num."
+                                );
+                            }
+                            //Verificamos que no falte la cantidad de lote
+                            if(empty($lote['cantidad'])){
+                                $validator->errors()->add(
+                                    "detalles.$index.lotes.$loteIndex.cantidad",
+                                    "La cantidad es requerida en el lote #$numLote del detalle #$num."
+                                );
+                            }
+                        }
+                    }
+                }else{
+                    //Si es normal debe venir directamente en el detalle
+                    if(empty($detalle['cantidad'])){
+                        $validator->errors()->add(
+                            "detalles.$index.cantidad",
+                            "La cantidad es requerida para el producto NORMAL en el detalle #$num."
                         );
                     }
                 }
             }
         });
     }
+
     //Funcion que recibe un array de los datos de un detalle
     protected function esProductoPerecedero(array $detalle): bool
     {
@@ -127,6 +188,7 @@ class CompraRequest extends FormRequest
         //Si el producto existe se consulta y devuelve true si es perecedero
         return Producto::where('id', $productoId)->value('perecedero') === 'PERECEDERO';
     }
+
     //Definimos los mensajes por si no se cumplen las validaciones
     public function messages(): array
     {
@@ -142,19 +204,19 @@ class CompraRequest extends FormRequest
             'detalles.required' => 'Debe incluir al menos un producto en la compra.',
             'detalles.min' => 'Debe incluir al menos un producto en la compra.',
             'detalles.*.producto_id.exists' => 'El producto seleccionado no existe.',
-            'detalles.*.cantidad.required' => 'La cantidad es obligatoria en cada detalle.',
-            'detalles.*.cantidad.min' => 'La cantidad debe ser al menos 1.',
-            'detalles.*.precio_unitario.required' => 'El precio unitario es obligatorio.',
+            'detalles.*.precio_unitario.required'=> 'El precio unitario es obligatorio.',
             'detalles.*.precio_unitario.min' => 'El precio unitario debe ser mayor a 0.',
             'detalles.*.margen_detalle.required' => 'El margen de venta al detalle es obligatorio.',
             'detalles.*.margen_detalle.min' => 'El margen al detalle debe ser mayor a 0.',
             'detalles.*.margen_mayor.required' => 'El margen de venta al mayor es obligatorio.',
             'detalles.*.margen_mayor.min' => 'El margen al mayor debe ser mayor a 0.',
             'detalles.*.perecedero.in' => 'El tipo de producto debe ser NORMAL o PERECEDERO.',
-            'detalles.*.fecha_vencimiento.after' => 'La fecha de vencimiento debe ser posterior a hoy.',
             'detalles.*.stock_minimo.min' => 'El stock mínimo debe ser al menos 1.',
+            'detalles.*.lotes.*.fecha_vencimiento.after' => 'La fecha de vencimiento debe ser posterior a hoy.',
+            'detalles.*.lotes.*.cantidad.min' => 'La cantidad del lote debe ser al menos 1.',
         ];
     }
+
     //Si las validaciones fallan se ejecuta esta funcion
     protected function failedValidation(Validator $validator)
     {
