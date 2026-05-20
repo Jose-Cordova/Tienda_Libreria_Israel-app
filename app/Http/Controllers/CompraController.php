@@ -86,23 +86,33 @@ class CompraController extends Controller
                     $producto = Producto::findOrFail($detalle['producto_id']);
                     $esProductoNuevo = false;
 
-                    //Si el prod esta inactivo por una anulacion lo reactivamos
+                    //Si el producto esta inactivo por una anulacion lo reactivamos
                     if($producto->estado === 'INACTIVO'){
                         $producto->update(['estado' => 'ACTIVO']);
                     }
                 }
 
                 //Si el producto es perecedero se crea el lote correspondiente
-                if($this->esPerecedero($producto, $detalle)){
-                    Lote::create([
-                        'codigo_lote' => $detalle['codigo_lote'],
-                        'fecha_vencimiento' => $detalle['fecha_vencimiento'],
-                        'fecha_ingreso' => now(),
-                        'cantidad_inicial' => $detalle['cantidad'],
-                        'cantidad_actual' => $detalle['cantidad'],
-                        'estado' => 'ACTIVO',
-                        'producto_id' => $producto->id
-                    ]);
+                if($producto->perecedero === 'PERECEDERO'){
+                    //Para perecederos la cantidad total es la suma de todos los lotes
+                    $cantidadTotal = array_sum(array_column($detalle['lotes'], 'cantidad'));
+
+                    //Creamos cada lote del detalle
+                    foreach($detalle['lotes'] as $lote){
+                        Lote::create([
+                            'codigo_lote' => $lote['codigo_lote'],
+                            'fecha_vencimiento' => $lote['fecha_vencimiento'],
+                            'fecha_ingreso' => now(),
+                            'cantidad_inicial' => $lote['cantidad'],
+                            'cantidad_actual' => $lote['cantidad'],
+                            'estado' => 'ACTIVO',
+                            'producto_id' => $producto->id,
+                            'compra_id' => $compra->id
+                        ]);
+                    }
+                }else{
+                    //Para productos normales la cantidad viene directo en el detalle
+                    $cantidadTotal = $detalle['cantidad'];
                 }
 
                 //Calculamos los precios de venta al detalle y al mayor y actualizamos
@@ -115,12 +125,12 @@ class CompraController extends Controller
                 ]);
 
                 //Calculamos el suubtotal y acumulamos el total de la compra
-                $subTotal = $detalle['cantidad'] * $detalle['precio_unitario'];
+                $subTotal = $cantidadTotal * $detalle['precio_unitario'];
                 $totalCompra += $subTotal;
 
                 //Guardamos los detalles de las compras
                 DetalleCompra::create([
-                    'cantidad' => $detalle['cantidad'],
+                    'cantidad' => $cantidadTotal,
                     'precio_unitario' => $detalle['precio_unitario'],
                     'margen_detalle' => $detalle['margen_detalle'],
                     'margen_mayor' => $detalle['margen_mayor'],
@@ -130,7 +140,7 @@ class CompraController extends Controller
                     'producto_id' => $producto->id
                 ]);
                 //Incremnetamos el stock
-                $producto->increment('stock', $detalle['cantidad']);
+                $producto->increment('stock', $cantidadTotal);
             }
 
             //Actualizamos el total de la conpra
