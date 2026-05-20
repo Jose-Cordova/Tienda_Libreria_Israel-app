@@ -72,7 +72,6 @@ class VentaController extends Controller
             //validaciones de venta
             'user_id' => 'required|exists:users,id',
             'metodo_pago_id' => 'required|exists:metodos_pagos,id',
-            'fecha' => 'required|date',
             'tipo_cliente' => 'required|in:DETALLES,MAYORISTA',
             'estado' => 'required|in:PAGADA,CREDITO',
 
@@ -81,12 +80,12 @@ class VentaController extends Controller
             'detalle.*.producto_id' => 'required|exists:productos,id',
             'detalle.*.cantidad' => 'required|integer|min:1',
 
-            //validaciones adicionales si la venta es credito
+            //validaciones adicionales si la venta es a CREDITO
             'cliente_credito_id' => 'nullable|exists:clientes_creditos,id',
 
-            'nombre' => 'required_without:cliente_credito_id|string|max:50',
-            'dui' => 'required_without:cliente_credito_id|string|max:10|unique:clientes_creditos,dui',
-            'telefono' => 'required_without:cliente_credito_id|string|max:9',
+            'nombre' => 'nullable|string|max:50',
+            'dui' => 'nullable|string|max:10|unique:clientes_creditos,dui',
+            'telefono' => 'nullable|string|max:10',
         ]);
 
         //iniciamos transaccion
@@ -98,7 +97,7 @@ class VentaController extends Controller
         //registramos venta
         $venta = Venta::create([
             'correlativo' => $this->generarCorrelativo(),
-            'fecha' => $data['fecha'],
+            'fecha' => now(),
             'total' => 0,
             'tipo_cliente' => $data['tipo_cliente'],
             'estado' => $data['estado'],
@@ -123,92 +122,118 @@ class VentaController extends Controller
             }
 
             //validamos tipo de cliente para cambiar precio
-            $precio = $data['tipo_cliente'] == 'MAYORISTA'
-                ? $producto->precio_mayor
-                : $producto->precio_detalle;
+$precio = $data['tipo_cliente'] == 'MAYORISTA'
+    ? $producto->precio_mayor
+    : $producto->precio_detalle;
 
-            //cantidad restante a descontar
-            $cantidadRestante = $detalle['cantidad'];
+//si el producto no es perecedero no necesita lote
+if($producto->perecedero == 'NORMAL'){
 
-            //obtenemos lotes FIFO del producto
-            $lotes = $producto->lotes()
-                ->where('estado', 'ACTIVO')
-                ->where('cantidad_actual', '>', 0)
-                ->orderBy('fecha_ingreso', 'asc')
-                ->get();
+    //calculamos subtotal del detalle
+    $subtotal = $precio * $detalle['cantidad'];
 
-            //validamos existencia de lotes
-            if($lotes->isEmpty()){
+    //registramos detalle de venta
+    DetalleVenta::create([
+        'cantidad' => $detalle['cantidad'],
+        'precio_unitario' => $precio,
+        'subtotal' => $subtotal,
+        'producto_id' => $producto->id,
+        'lote_id' => null,
+        'venta_id' => $venta->id
+    ]);
 
-                DB::rollBack();
+    //descontamos stock general del producto
+    $producto->update([
+        'stock' => $producto->stock - $detalle['cantidad']
+    ]);
 
-                return response()->json([
-                    'message' => 'No existen lotes disponibles para el producto '.$producto->nombre
-                ], 400);
-            }
+    //sumamos subtotal al total venta
+    $totalVenta += $subtotal;
 
-            //recorremos lotes para aplicar FIFO
-            foreach($lotes as $lote){
+}else{
 
-                //omitimos lotes vencidos
-                if($lote->fecha_vencimiento < now()->toDateString()){
-                    continue;
-                }
+    //cantidad restante a descontar
+    $cantidadRestante = $detalle['cantidad'];
 
-                //si ya no queda cantidad salimos
-                if($cantidadRestante <= 0){
-                    break;
-                }
+    //obtenemos lotes FIFO del producto
+    $lotes = $producto->lotes()
+        ->where('estado', 'ACTIVO')
+        ->where('cantidad_actual', '>', 0)
+        ->orderBy('fecha_ingreso', 'asc')
+        ->get();
 
-                //cantidad que descontaremos del lote actual
-                $descuento = min($cantidadRestante, $lote->cantidad_actual);
+    //validamos existencia de lotes
+    if($lotes->isEmpty()){
 
-                //calculamos subtotal del lote
-                $subtotal = $precio * $descuento;
+        DB::rollBack();
 
-                //registramos detalle de venta
-                DetalleVenta::create([
-                    'cantidad' => $descuento,
-                    'precio_unitario' => $precio,
-                    'subtotal' => $subtotal,
-                    'producto_id' => $producto->id,
-                    'lote_id' => $lote->id,
-                    'venta_id' => $venta->id
-                ]);
+        return response()->json([
+            'message' => 'No existen lotes disponibles para el producto '.$producto->nombre
+        ], 400);
+    }
 
-                //descontamos stock del lote
-                $lote->cantidad_actual -= $descuento;
+    //recorremos lotes para aplicar FIFO
+    foreach($lotes as $lote){
 
-                //si el lote llega a 0 cambiamos estado
-                if($lote->cantidad_actual <= 0){
-                    $lote->estado = 'INACTIVO';
-                }
-
-                $lote->save();
-
-                //restamos cantidad restante
-                $cantidadRestante -= $descuento;
-
-                //sumamos subtotal al total venta
-                $totalVenta += $subtotal;
-            }
-
-            //validamos si no se pudo cubrir toda la cantidad
-            if($cantidadRestante > 0){
-
-                DB::rollBack();
-
-                return response()->json([
-                    'message' => 'Stock insuficiente en lotes para el producto '.$producto->nombre
-                ], 400);
-            }
-
-            //descontamos stock general del producto
-            $producto->update([
-                'stock' => $producto->stock - $detalle['cantidad']
-            ]);
+        //omitimos lotes vencidos
+        if($lote->fecha_vencimiento < now()->toDateString()){
+            continue;
         }
 
+        //si ya no queda cantidad salimos
+        if($cantidadRestante <= 0){
+            break;
+        }
+
+        //cantidad que descontaremos del lote actual
+        $descuento = min($cantidadRestante, $lote->cantidad_actual);
+
+        //calculamos subtotal del lote
+        $subtotal = $precio * $descuento;
+
+        //registramos detalle de venta
+        DetalleVenta::create([
+            'cantidad' => $descuento,
+            'precio_unitario' => $precio,
+            'subtotal' => $subtotal,
+            'producto_id' => $producto->id,
+            'lote_id' => $lote->id,
+            'venta_id' => $venta->id
+        ]);
+
+        //descontamos stock del lote
+        $lote->cantidad_actual -= $descuento;
+
+        //si el lote llega a 0 cambiamos estado
+        if($lote->cantidad_actual <= 0){
+            $lote->estado = 'INACTIVO';
+        }
+
+        $lote->save();
+
+        //restamos cantidad restante
+        $cantidadRestante -= $descuento;
+
+        //sumamos subtotal al total venta
+        $totalVenta += $subtotal;
+    }
+
+    //validamos si no se pudo cubrir toda la cantidad
+    if($cantidadRestante > 0){
+
+        DB::rollBack();
+
+        return response()->json([
+            'message' => 'Stock insuficiente en lotes para el producto '.$producto->nombre
+        ], 400);
+    }
+
+    //descontamos stock general del producto
+    $producto->update([
+        'stock' => $producto->stock - $detalle['cantidad']
+    ]);
+        }
+    }
         //actualizamos total final de la venta
         $venta->update([
             'total' => $totalVenta
@@ -216,7 +241,24 @@ class VentaController extends Controller
 
         //registramos credito si el estado de venta es credito
         //registramos credito si el estado de venta es credito
-if($data['estado'] == 'CREDITO'){
+    if($data['estado'] == 'CREDITO'){
+
+    //validamos que exista cliente o datos para registrarlo
+    if(
+        empty($data['cliente_credito_id']) &&
+        (
+            empty($data['nombre']) ||
+            empty($data['dui']) ||
+            empty($data['telefono'])
+        )
+    ){
+
+        DB::rollBack();
+
+        return response()->json([
+            'message' => 'Debe seleccionar un cliente crédito o registrar uno nuevo'
+        ], 400);
+    }
 
     //si no existe cliente_credito lo registramos
     if(empty($data['cliente_credito_id'])){
@@ -229,7 +271,6 @@ if($data['estado'] == 'CREDITO'){
 
     }else{
 
-        //si existe lo buscamos
         $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
     }
 

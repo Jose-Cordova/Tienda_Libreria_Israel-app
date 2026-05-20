@@ -43,3 +43,4 @@ Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('compras', CompraController::class);
     Route::post('compras/{id}/anular', [CompraController::class, 'anular']);
 });
+
