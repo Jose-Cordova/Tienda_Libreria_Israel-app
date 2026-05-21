@@ -29,4 +29,5 @@ class Lote extends Model
     {
         return $this->belongsTo(Compra::class);
     }
+
 }
