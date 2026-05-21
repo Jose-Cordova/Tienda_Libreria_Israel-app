@@ -63,7 +63,6 @@ class CompraRequest extends FormRequest
             foreach($detalles as $index => $detalle){
                 $productoId = $detalle['producto_id'] ?? null;
                 $num = $index + 1;
-                
                 //Determinamos si el producto es perecedero
                 $esPerecedero = $this->esProductoPerecedero($detalle);
 
@@ -114,7 +113,6 @@ class CompraRequest extends FormRequest
                         $lotesExistentes = [];
                         foreach($detalle['lotes'] as $loteIndex => $lote){
                             $numLote = $loteIndex + 1;
-
                             //Verificamos que no falte el codigo de lote
                             if(empty($lote['codigo_lote'])){
                                 $validator->errors()->add(

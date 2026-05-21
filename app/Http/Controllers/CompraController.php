@@ -150,7 +150,7 @@ class CompraController extends Controller
             DB::commit();
             return response()->json([
                 'message' => 'Compra registrada correctamente.',
-                $compra->load([
+                'compra' => $compra->load([
                     'detalleCompras.producto.lotes' => function($query) use ($compra){
                         $query->where('compra_id', $compra->id);
                     }
