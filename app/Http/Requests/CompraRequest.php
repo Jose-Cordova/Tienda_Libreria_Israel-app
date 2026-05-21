@@ -63,21 +63,7 @@ class CompraRequest extends FormRequest
             foreach($detalles as $index => $detalle){
                 $productoId = $detalle['producto_id'] ?? null;
                 $num = $index + 1;
-
-                if(!is_null($productoId)){
-                    //Validamos si el producto ya esta en el detalle
-                    if(in_array($productoId, $productosExistentes)){
-                        $validator->errors()->add(
-                            "detalles.$index.producto_id",
-                            "El producto con ID $productoId ya fue agregado en otro detalle."
-                        );
-                    }else{
-                        //Si no existe lo guardamos en el array
-                        $productosExistentes[] = $productoId;
-                    }
-                //En caso de que el producto no exista
-                }else{
-                    // Validar campos para producto nuevo
+                
                 //Determinamos si el producto es perecedero
                 $esPerecedero = $this->esProductoPerecedero($detalle);
 

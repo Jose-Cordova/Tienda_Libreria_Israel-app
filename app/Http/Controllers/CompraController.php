@@ -150,7 +150,11 @@ class CompraController extends Controller
             DB::commit();
             return response()->json([
                 'message' => 'Compra registrada correctamente.',
-                'compra' => $compra->load('detalleCompras.producto')
+                $compra->load([
+                    'detalleCompras.producto.lotes' => function($query) use ($compra){
+                        $query->where('compra_id', $compra->id);
+                    }
+                ])
             ], 201);
 
         }catch(\Exception $e){
@@ -158,7 +162,8 @@ class CompraController extends Controller
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Error interno en el servidor.'
+                'message' => 'Error interno en el servidor.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -201,16 +206,6 @@ class CompraController extends Controller
        //
     }
 
-    //Funcion para determinar si un producto es perecedero
-    private function esPerecedero($producto, array $detalle): bool
-    {
-        //Para producto nuevo y existente
-        if(is_null($detalle['producto_id'] ?? null)){
-            return ($detalle['perecedero'] ?? '') === 'PERECEDERO';
-        }
-        return $producto->perecedero === 'PERECEDERO';
-    }
-
     //Funcion para anular una compra
     public function anular(string $id)
     {
@@ -228,23 +223,11 @@ class CompraController extends Controller
                     'message' => 'Esta compra ya fue anulada anteriormente.'
                 ], 409);
             }
-            //Validamos que la compra sea del dia actual
-            if($compra->fecha_registro->toDateString() != now()->toDateString()){
-                return response()->json([
-                    'message' => 'No se puede anular una compra de días anteriores.'
-                ], 409);
-            }
 
             //Validaciones previas para asegurar que sea seguro revertir
             foreach($compra->detalleCompras as $detalle){
                 $producto = $detalle->producto;
 
-                //Verificamos que el stock no quede negativo
-                if($producto->stock - $detalle->cantidad < 0){
-                    return response()->json([
-                        'message' => "No se puede anular la compra. El producto '{$producto->nombre}' tiene ventas posteriores."
-                    ], 409);
-                }
                 //Si el producto es perecedero verificar el lote correspondiente no se haya vendido
                 if($producto->perecedero === 'PERECEDERO'){
                     //Buscamos el lote creado en esta compra
@@ -279,10 +262,13 @@ class CompraController extends Controller
 
                     //Revertimos el stock
                     $producto->decrement('stock', $detalle->cantidad);
-                    //Eliminamos solo los lotes que pertenecen a esa compra
-                    $producto->lotes
+
+                    if($producto->perecedero === 'PERECEDERO'){
+                        //Eliminamos solo los lotes que pertenecen a esa compra
+                        $producto->lotes
                         ->filter(fn($lote) => $lote->compra_id === $compra->id)
                         ->each(fn($lote) => $lote->delete());
+                    }
 
                     //Si el producto fue creado en esta compra lo inactivamos
                     if($detalle->es_producto_nuevo){
