@@ -35,7 +35,6 @@ Route::apiResource('metodos-pagos', MetodoPagoContoller::class);
 Route::apiResource('clientes-creditos', ClienteCreditoController::class);
 Route::apiResource('marcas', MarcaController::class);
 Route::apiResource('unidadesmedidas', UnidadMedidaController::class);
-Route::apiResource('compras', CompraController::class);
 Route::apiResource('ventas', VentaController::class);
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){

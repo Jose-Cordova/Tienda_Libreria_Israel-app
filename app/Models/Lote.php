@@ -13,7 +13,8 @@ class Lote extends Model
         'cantidad_inicial',
         'cantidad_actual',
         'estado',
-        'producto_id'
+        'producto_id',
+        'compra_id'
     ];
     protected $casts = [
         'fecha_vencimiento' => 'date',
@@ -24,5 +25,9 @@ class Lote extends Model
     {
         return $this->belongsTo(Producto::class);
     }
-    
+    public function compra()
+    {
+        return $this->belongsTo(Compra::class);
+    }
+
 }
