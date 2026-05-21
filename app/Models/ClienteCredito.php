@@ -8,9 +8,10 @@ class ClienteCredito extends Model
 {
     protected $table = 'clientes_creditos';
     protected $fillable = [
-        'nombre',
-        'telefono'
-    ];
+    'nombre',
+    'dui',
+    'telefono'
+];
 
     public function creditos()
     {

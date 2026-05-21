@@ -24,4 +24,5 @@ class Lote extends Model
     {
         return $this->belongsTo(Producto::class);
     }
+    
 }

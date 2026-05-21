@@ -12,7 +12,9 @@ class DetalleVenta extends Model
         'precio_unitario',
         'subtotal',
         'venta_id',
-        'producto_id'
+        'producto_id',
+        'lote_id'
+
     ];
     protected $casts = [
         'precio_unitario' => 'decimal:2',
@@ -26,5 +28,9 @@ class DetalleVenta extends Model
     public function producto()
     {
         return $this->belongsTo(Producto::class);
+    }
+    public function lote()
+    {
+    return $this->belongsTo(Lote::class);
     }
 }
