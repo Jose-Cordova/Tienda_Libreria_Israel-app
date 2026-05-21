@@ -150,7 +150,11 @@ class CompraController extends Controller
             DB::commit();
             return response()->json([
                 'message' => 'Compra registrada correctamente.',
-                'compra' => $compra->load('detalleCompras.producto')
+                'compra' => $compra->load([
+                    'detalleCompras.producto.lotes' => function($query) use ($compra){
+                        $query->where('compra_id', $compra->id);
+                    }
+                ])
             ], 201);
 
         }catch(\Exception $e){
@@ -159,7 +163,7 @@ class CompraController extends Controller
 
             return response()->json([
                 'message' => 'Error interno en el servidor.',
-                'ERROR' => $e->getMessage()
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -202,16 +206,6 @@ class CompraController extends Controller
        //
     }
 
-    //Funcion para determinar si un producto es perecedero
-    private function esPerecedero($producto, array $detalle): bool
-    {
-        //Para producto nuevo y existente
-        if(is_null($detalle['producto_id'] ?? null)){
-            return ($detalle['perecedero'] ?? '') === 'PERECEDERO';
-        }
-        return $producto->perecedero === 'PERECEDERO';
-    }
-
     //Funcion para anular una compra
     public function anular(string $id)
     {
@@ -229,38 +223,33 @@ class CompraController extends Controller
                     'message' => 'Esta compra ya fue anulada anteriormente.'
                 ], 409);
             }
-            //Validamos que la compra sea del dia actual
-            if($compra->fecha_registro->toDateString() != now()->toDateString()){
-                return response()->json([
-                    'message' => 'No se puede anular una compra de días anteriores.'
-                ], 409);
-            }
 
             //Validaciones previas para asegurar que sea seguro revertir
             foreach($compra->detalleCompras as $detalle){
                 $producto = $detalle->producto;
 
-                //Verificamos que el stock no quede negativo
-                if($producto->stock - $detalle->cantidad < 0){
-                    return response()->json([
-                        'message' => "No se puede anular la compra. El producto '{$producto->nombre}' tiene ventas posteriores."
-                    ], 409);
-                }
                 //Si el producto es perecedero verificar el lote correspondiente no se haya vendido
                 if($producto->perecedero === 'PERECEDERO'){
                     //Buscamos el lote creado en esta compra
-                    $lote = $producto->lotes->first(function($lote) use ($detalle){
-                        return $lote->fecha_ingreso->toDateString() === now()->toDateString() && $lote->cantidad_inicial == $detalle->cantidad;
-                    });
-                    if(!$lote){
+                    $lotes = $producto->lotes->filter(fn($lote) => $lote->compra_id === $compra->id);
+
+                    if($lotes->isEmpty()){
                         return response()->json([
                             'message' => "No se encontró el lote correspondiente para el producto '{$producto->nombre}'."
                         ], 409);
                     }
-                    //Verificamos si se a vendido algo del lote
-                    if($lote->cantidad_actual < $lote->cantidad_inicial){
+                    foreach($lotes as $lote){
+                        if ($lote->cantidad_actual < $lote->cantidad_inicial) {
+                            return response()->json([
+                                'message' => "No se puede anular. El lote '{$lote->codigo_lote}' del producto '{$producto->nombre}' ya fue parcialmente vendido."
+                            ], 409);
+                        }
+                    }
+                }else{
+                    //Para NORMAL solo verificamos que el stock no quede negativo
+                    if ($producto->stock - $detalle->cantidad < 0) {
                         return response()->json([
-                            'message' => "No se puede anular la compra. El lote del producto '{$producto->nombre}' ya fue parcialmente vendido."
+                            'message' => "No se puede anular. El producto '{$producto->nombre}' tiene ventas posteriores."
                         ], 409);
                     }
                 }
@@ -274,14 +263,11 @@ class CompraController extends Controller
                     //Revertimos el stock
                     $producto->decrement('stock', $detalle->cantidad);
 
-                    //Si es perecedero eliminamos el lote
                     if($producto->perecedero === 'PERECEDERO'){
-                        $lote = $producto->lotes->first(function ($lote) use ($detalle){
-                            return $lote->fecha_ingreso->toDateString() === now()->toDateString() && $lote->cantidad_inicial == $detalle->cantidad;
-                        });
-                        if($lote){
-                            $lote->delete();
-                        }
+                        //Eliminamos solo los lotes que pertenecen a esa compra
+                        $producto->lotes
+                        ->filter(fn($lote) => $lote->compra_id === $compra->id)
+                        ->each(fn($lote) => $lote->delete());
                     }
 
                     //Si el producto fue creado en esta compra lo inactivamos
@@ -294,7 +280,6 @@ class CompraController extends Controller
                         }
                     }
                 }
-
                 //Marcamos la compra como anulada
                 $compra->update(['estado' => 'ANULADA']);
 
