@@ -35,7 +35,6 @@ class CompraRequest extends FormRequest
             'detalles' => 'required|array|min:1',
             'detalles.*.producto_id' => 'nullable|exists:productos,id',
             'detalles.*.cantidad' => 'nullable|integer|min:1',
-            'detalles.*.cantidad' => 'nullable|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric|min:0.01',
             'detalles.*.margen_detalle' => 'required|numeric|min:0.01',
             'detalles.*.margen_mayor' => 'required|numeric|min:0.01',
@@ -48,10 +47,8 @@ class CompraRequest extends FormRequest
             'detalles.*.unidad_medida_id' => 'nullable|exists:unidades_medidas,id',
             //Validacion para los lotes cuando el prodcuto es perecedero
             'detalles.*.lotes' => 'nullable|array|min:1',
-            'detalles.*.lotes.*.lotes' => 'nullable|array|min:1',
             'detalles.*.lotes.*.codigo_lote' => 'nullable|string|max:50',
-            'detalles.*.lotes.*.lotes.*.fecha_vencimiento' => 'nullable|date|after:today',
-            'detalles.*.lotes.*.cantidad' => 'nullable|integer|min:1',
+            'detalles.*.lotes.*.fecha_vencimiento' => 'nullable|date|after:today',
             'detalles.*.lotes.*.cantidad' => 'nullable|integer|min:1'
         ];
     }
@@ -66,12 +63,6 @@ class CompraRequest extends FormRequest
             foreach($detalles as $index => $detalle){
                 $productoId = $detalle['producto_id'] ?? null;
                 $num = $index + 1;
-                //Determinamos si el producto es perecedero
-                $esPerecedero = $this->esProductoPerecedero($detalle);
-
-                //Validar producto nuevo
-                if(is_null($productoId)){
-                    //Validar campos para producto nuevo
                 //Determinamos si el producto es perecedero
                 $esPerecedero = $this->esProductoPerecedero($detalle);
 
@@ -113,23 +104,6 @@ class CompraRequest extends FormRequest
                 if($esPerecedero){
                     //Si es perecedero debe tener al menos un lote
                     if(empty($detalle['lotes'])){
-                }else{
-                    //Validamos si el producto ya esta en el detalle
-                    if(in_array($productoId, $productosExistentes)){
-                        $validator->errors()->add(
-                            "detalles.$index.producto_id",
-                            "El producto (ID: $productoId) ya fue agregado en otro detalle."
-                        );
-                    }else{
-                        //Si no existe lo guardamos en el array
-                        $productosExistentes[] = $productoId;
-                    }
-                }
-
-                //Validar segun tipo de producto
-                if($esPerecedero){
-                    //Si es perecedero debe tener al menos un lote
-                    if(empty($detalle['lotes'])){
                         $validator->errors()->add(
                             "detalles.$index.lotes",
                             "El producto perecedero en el detalle #$num debe tener al menos un lote."
@@ -139,52 +113,6 @@ class CompraRequest extends FormRequest
                         $lotesExistentes = [];
                         foreach($detalle['lotes'] as $loteIndex => $lote){
                             $numLote = $loteIndex + 1;
-                            //Verificamos que no falte el codigo de lote
-                            if(empty($lote['codigo_lote'])){
-                                $validator->errors()->add(
-                                    "detalles.$index.lotes.$loteIndex.codigo_lote",
-                                    "El código de lote es requerido en el lote #$numLote del detalle #$num."
-                                );
-                            }else{
-                                //Verificamos que no se repita el mismo codigo de lote
-                                if(in_array($lote['codigo_lote'], $lotesExistentes)){
-                                    $validator->errors()->add(
-                                        "detalles.$index.lotes.$loteIndex.codigo_lote",
-                                        "El código de lote '{$lote['codigo_lote']}' ya fue agregado en este detalle."
-                                    );
-                                }else{
-                                    $lotesExistentes[] = $lote['codigo_lote'];
-                                }
-                            }
-
-                            //Verificamos que no falte la fecha de vencimiento
-                            if(empty($lote['fecha_vencimiento'])){
-                                $validator->errors()->add(
-                                    "detalles.$index.lotes.$loteIndex.fecha_vencimiento",
-                                    "La fecha de vencimiento es requerida en el lote #$numLote del detalle #$num."
-                                );
-                            }
-                            //Verificamos que no falte la cantidad de lote
-                            if(empty($lote['cantidad'])){
-                                $validator->errors()->add(
-                                    "detalles.$index.lotes.$loteIndex.cantidad",
-                                    "La cantidad es requerida en el lote #$numLote del detalle #$num."
-                                );
-                            }
-                        }
-                    }
-                }else{
-                    //Si es normal debe venir directamente en el detalle
-                    if(empty($detalle['cantidad'])){
-                            "detalles.$index.lotes",
-                            "El producto perecedero en el detalle #$num debe tener al menos un lote."
-                        );
-                    }else{
-                        //Validamos cada lote del detalle
-                        $lotesExistentes = [];
-                        foreach($detalle['lotes'] as $loteIndex => $lote){
-                            $numLote = $loteIndex + 1;
-
                             //Verificamos que no falte el codigo de lote
                             if(empty($lote['codigo_lote'])){
                                 $validator->errors()->add(
