@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
             $table->unsignedBigInteger('lote_id');
-            $table->foreign('lote_id')->references('id')->on('lotes');
+            $table->foreign('lote_id')->references('id')->on('lotes')->nullOnDelete();
             $table->timestamps();
         });
     }
