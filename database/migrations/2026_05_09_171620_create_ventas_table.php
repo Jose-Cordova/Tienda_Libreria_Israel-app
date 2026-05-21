@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('ventas', function (Blueprint $table) {
             $table->id();
-            $table->integer('correlativo')->unique();
+            $table->bigInteger('correlativo')->unique();
             $table->timestamp('fecha');
             $table->decimal('total', 12,2);
             $table->enum('tipo_cliente', ['DETALLES', 'MAYORISTA'])->default('DETALLES');
