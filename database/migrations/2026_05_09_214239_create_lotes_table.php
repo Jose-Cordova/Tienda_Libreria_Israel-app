@@ -21,8 +21,8 @@ return new class extends Migration
             $table->enum('estado', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
-            $table->unsignedBigInteger('compra_id');
-            $table->foreign('compra_id')->references('id')->on('compras');
+            $table->unsignedBigInteger('compra_id')->nullable();
+            $table->foreign('compra_id')->references('id')->on('compras')->nullOnDelete();;
             $table->timestamps();
         });
     }
