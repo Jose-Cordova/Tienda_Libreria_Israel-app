@@ -30,6 +30,10 @@ class CompraController extends Controller
             if($request->proveedor_id){
                 $query->where('proveedor_id', $request->proveedor_id);
             }
+            //Filtrar por codigo de factura
+            if($request->codigo_factura){
+                $query->where('codigo_factura', $request->codigo_factura);
+            }
             $compras = $query->orderBy('id', 'desc')->get();
 
             return response()->json($compras, 200);
@@ -80,16 +84,16 @@ class CompraController extends Controller
                         'categoria_id' => $detalle['categoria_id'],
                         'unidad_medida_id' => $detalle['unidad_medida_id']
                     ]);
-                    $esProductoNuevo = true;
+
                 }else{
                     //Si el producto existe lo buscamos
                     $producto = Producto::findOrFail($detalle['producto_id']);
-                    $esProductoNuevo = false;
 
-                    //Si el producto esta inactivo por una anulacion lo reactivamos
+                    //Si el producto estaba inacativo lo activamos
                     if($producto->estado === 'INACTIVO'){
                         $producto->update(['estado' => 'ACTIVO']);
                     }
+
                 }
 
                 //Si el producto es perecedero se crea el lote correspondiente
@@ -135,7 +139,6 @@ class CompraController extends Controller
                     'margen_detalle' => $detalle['margen_detalle'],
                     'margen_mayor' => $detalle['margen_mayor'],
                     'subtotal' => $subTotal,
-                    'es_producto_nuevo' => $esProductoNuevo,
                     'compra_id' => $compra->id,
                     'producto_id' => $producto->id
                 ]);
@@ -264,16 +267,6 @@ class CompraController extends Controller
                         $producto->lotes
                         ->filter(fn($lote) => $lote->compra_id === $compra->id)
                         ->each(fn($lote) => $lote->delete());
-                    }
-
-                    //Si el producto fue creado en esta compra lo inactivamos
-                    if($detalle->es_producto_nuevo){
-                        $otrasCompras = DetalleCompra::where('producto_id', $producto->id)
-                            ->where('compra_id', '!=', $compra->id)
-                            ->exists();
-                        if(!$otrasCompras){
-                            $producto->update(['estado' => 'INACTIVO']);
-                        }
                     }
                 }
                 //Marcamos la compra como anulada

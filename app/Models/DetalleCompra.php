@@ -12,7 +12,6 @@ class DetalleCompra extends Model
         'precio_unitario',
         'margen_detalle',
         'margen_mayor',
-        'es_producto_nuevo',
         'subtotal',
         'compra_id',
         'producto_id'
@@ -21,8 +20,7 @@ class DetalleCompra extends Model
         'precio_unitario' => 'decimal:2',
         'margen_detalle' => 'decimal:2',
         'margen_mayor' => 'decimal:2',
-        'subtotal' => 'decimal:2',
-        'es_producto_nuevo' => 'boolean'
+        'subtotal' => 'decimal:2'
     ];
 
     public function compra()

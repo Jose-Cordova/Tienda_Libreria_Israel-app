@@ -18,7 +18,6 @@ return new class extends Migration
             $table->decimal('margen_detalle', 12,2);
             $table->decimal('margen_mayor', 12,2);
             $table->decimal('subtotal', 12,2);
-             $table->boolean('es_producto_nuevo')->default(false);
             $table->unsignedBigInteger('compra_id');
             $table->foreign('compra_id')->references('id')->on('compras');
             $table->unsignedBigInteger('producto_id');
