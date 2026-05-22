@@ -150,11 +150,7 @@ class CompraController extends Controller
             DB::commit();
             return response()->json([
                 'message' => 'Compra registrada correctamente.',
-                'compra' => $compra->load([
-                    'detalleCompras.producto.lotes' => function($query) use ($compra){
-                        $query->where('compra_id', $compra->id);
-                    }
-                ])
+                'compra' => $compra->load(['detalleCompras.producto', 'lotes'])
             ], 201);
 
         }catch(\Exception $e){
@@ -249,7 +245,7 @@ class CompraController extends Controller
                     //Para NORMAL solo verificamos que el stock no quede negativo
                     if ($producto->stock - $detalle->cantidad < 0) {
                         return response()->json([
-                            'message' => "No se puede anular. El producto '{$producto->nombre}' tiene ventas posteriores."
+                            'message' => "No se puede anular la compra. El producto '{$producto->nombre}' no tiene suficiente stock para revertir esta operación."
                         ], 409);
                     }
                 }
