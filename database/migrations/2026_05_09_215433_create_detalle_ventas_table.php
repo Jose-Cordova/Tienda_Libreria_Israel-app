@@ -20,8 +20,8 @@ return new class extends Migration
             $table->foreign('venta_id')->references('id')->on('ventas');
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
-            $table->unsignedBigInteger('lote_id');
-            $table->foreign('lote_id')->references('id')->on('lotes');
+            $table->unsignedBigInteger('lote_id')->nullable();
+            $table->foreign('lote_id')->references('id')->on('lotes')->nullOnDelete();
             $table->timestamps();
         });
     }
