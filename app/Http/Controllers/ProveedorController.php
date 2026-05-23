@@ -15,10 +15,17 @@ class ProveedorController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         try{
-            $proveedores = Proveedor::orderBy('id', 'desc')->get();
+            $busqueda = $request->query('buscar');
+            $paginacion = $request->query('paginacion', 10);
+            $proveedores = Proveedor::when($busqueda, function($query) use ($busqueda){
+                $query->whereRaw('LOWER(nombre) LIKE ?', ["%" . strtolower($busqueda) . "%"]);
+            })
+            ->orderBy('id', 'desc')
+            ->paginate($paginacion);
+
             return response()->json($proveedores, 200);
 
         }catch(\Exception $e){
