@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('lotes', function (Blueprint $table) {
             $table->id();
-            $table->date('fecha_vencimiento');
+            $table->date('fecha_vencimiento')->nullable();
             $table->string('codigo_lote', 50);
             $table->date('fecha_ingreso');
             $table->integer('cantidad_inicial');
