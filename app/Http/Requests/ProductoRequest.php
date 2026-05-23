@@ -27,9 +27,9 @@ class ProductoRequest extends FormRequest
         'marca_id'         => 'required|exists:marcas,id',
         'categoria_id'     => 'required|exists:categorias,id',
         'cantidad_inicial'  => 'required|integer|min:1',
-        'codigo_lote'       => 'nullable|string|max:50',
-        'fecha_vencimiento' => 'nullable|date|after:today',
-        'codigo_lote' => 'required|string|max:50|unique:lotes,codigo_lote',
+        'codigo_lote'       => 'required_if:perecedero,PERECEDERO|string|max:50|unique:lotes,codigo_lote',
+        'fecha_vencimiento' => 'required_if:perecedero,PERECEDERO|date|after:today',
+        
     ];
 }
 

@@ -44,7 +44,7 @@ Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('compras', CompraController::class);
     Route::post('compras/{id}/anular', [CompraController::class, 'anular']);
 });
-Route::apiResource('productos', ProductoController::class);
 Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaStockMinimo']);
 Route::patch('productos/{id}/cambiar-estado', [ProductoController::class, 'cambiarEstado']);
+Route::apiResource('productos', ProductoController::class);
 

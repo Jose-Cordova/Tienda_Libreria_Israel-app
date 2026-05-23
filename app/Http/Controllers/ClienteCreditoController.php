@@ -33,8 +33,10 @@ class ClienteCreditoController extends Controller
         try {
             $request->validate(
                 [
-                    'nombre'   => 'required|string|min:3|max:50|unique:clientes_creditos,nombre|regex:/^[\pL\s]+$/u',
+                    'nombre'   => 'required|string|min:3|max:50|regex:/^[\pL\s]+$/u',
+                    'dui'      => 'required|string|unique:clientes_creditos,dui|regex:/^[0-9]{8}-[0-9]{1}$/',
                     'telefono' => 'required|string|min:8|max:20|unique:clientes_creditos,telefono|regex:/^[0-9\s\-]+$/'
+
                 ],
                 [
                     'nombre.required'   => 'El nombre del cliente es obligatorio.',
@@ -43,6 +45,11 @@ class ClienteCreditoController extends Controller
                     'nombre.max'        => 'El nombre no puede superar los 50 caracteres.',
                     'nombre.unique'     => 'Ya existe un cliente con ese nombre.',
                     'nombre.regex'      => 'El nombre solo puede contener letras y espacios.',
+
+
+                    'dui.required'      => 'El DUI es obligatorio.',
+                    'dui.unique'      => 'Ya existe un cliente con ese DUI.',
+                    'dui.regex'       => 'El DUI debe tener el formato 12345678-9 o 123456789.',
 
                     'telefono.required' => 'El teléfono es obligatorio.',
                     'telefono.string'   => 'El teléfono debe contener solo caracteres válidos.',
@@ -55,6 +62,7 @@ class ClienteCreditoController extends Controller
 
             $cliente = ClienteCredito::create([
                 'nombre'   => $request->nombre,
+                'dui'      => $request->dui,
                 'telefono' => $request->telefono
             ]);
 
@@ -71,7 +79,8 @@ class ClienteCreditoController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Error interno en el servidor.'
+                'message' => 'Error interno en el servidor.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -102,16 +111,20 @@ class ClienteCreditoController extends Controller
         try {
             $cliente = ClienteCredito::findOrFail($id);
             $request->validate([
-                    'nombre'   => 'required|string|min:3|max:50|unique:clientes_creditos,nombre,'.$id.'|regex:/^[\pL\s]+$/u',
-                'telefono' => 'required|string|min:8|max:20|unique:clientes_creditos,telefono,'.$id.'|regex:/^[0-9\s\-]+$/'
+                    'nombre'   => 'required|string|min:3|max:50|regex:/^[\pL\s]+$/u',
+                    'dui'      => 'required|string|unique:clientes_creditos,dui,'.$id.'|regex:/^[0-9]{8}-[0-9]{1}$/',
+                    'telefono' => 'required|string|min:8|max:20|unique:clientes_creditos,telefono,'.$id.'|regex:/^[0-9\s\-]+$/'
                 ],
                 [
                     'nombre.required'   => 'El nombre del cliente es obligatorio.',
                     'nombre.string'     => 'El nombre debe ser texto.',
                     'nombre.min'        => 'El nombre debe tener al menos 3 caracteres.',
                     'nombre.max'        => 'El nombre no puede superar los 50 caracteres.',
-                    'nombre.unique'     => 'Ya existe un cliente con ese nombre.',
                     'nombre.regex'      => 'El nombre solo puede contener letras y espacios.',
+
+                    'dui.required'      => 'El DUI es obligatorio.',
+                    'dui.unique'      => 'Ya existe un cliente con ese DUI.',
+                    'dui.regex'       => 'El DUI debe tener el formato 12345678-9 o 123456789.',
 
                     'telefono.required' => 'El teléfono es obligatorio.',
                     'telefono.string'   => 'El teléfono debe ser texto.',
