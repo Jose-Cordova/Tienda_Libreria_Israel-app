@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+
 //Controladores
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteCreditoController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\CompraController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\MetodoPagoContoller;
 use App\Http\Controllers\VentaController;
+use App\Http\Controllers\ProductoController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -42,4 +44,7 @@ Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('compras', CompraController::class);
     Route::post('compras/{id}/anular', [CompraController::class, 'anular']);
 });
+Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaStockMinimo']);
+Route::patch('productos/{id}/cambiar-estado', [ProductoController::class, 'cambiarEstado']);
+Route::apiResource('productos', ProductoController::class);
 

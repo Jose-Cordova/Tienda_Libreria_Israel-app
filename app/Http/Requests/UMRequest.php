@@ -36,7 +36,7 @@ class UMRequest extends FormRequest
             Rule::unique('unidades_medidas', 'nombre')->ignore($id)
         ],
         'equivalencia' => [
-            'required', 'string', 'min:2', 'max:50',
+            'required', 'string','max:50',
         ],
     ];
     }
@@ -49,7 +49,6 @@ class UMRequest extends FormRequest
         'nombre.max' => 'El nombre no debe tener mas de 50 caracteres.',
         'nombre.unique' => 'Ya existe una unidad de medida con este nombre.',
         'equivalencia.required' => 'La equivalencia es obligatoria.',
-        'equivalencia.min' => 'La equivalencia debe tener al menos 2 caracteres.',
         'equivalencia.max' => 'La equivalencia no debe tener mas de 50 caracteres.',
 
         ];
