@@ -8,7 +8,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\MetodoPago;
 
-class MetodoPagoContoller extends Controller
+class MetodoPagoController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -140,7 +140,7 @@ class MetodoPagoContoller extends Controller
         catch(ValidationException $e){
             return response()->json([
                 'message' => 'Error de validacion.',
-                'error' => $e->errors()
+                'errors' => $e->errors()
             ],422);
         }
         catch(ModelNotFoundException $e){
