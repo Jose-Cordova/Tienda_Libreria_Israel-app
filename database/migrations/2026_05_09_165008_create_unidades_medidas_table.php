@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('unidades_medidas', function (Blueprint $table) {
             $table->id();
             $table->string('nombre', 50);
-            $table->string('equivalencia', 50);
+            $table->integer('equivalencia', 50);
             $table->timestamps();
         });
     }

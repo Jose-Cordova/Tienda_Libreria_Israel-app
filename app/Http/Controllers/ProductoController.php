@@ -9,6 +9,7 @@ use App\Models\Lote;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
+
 class ProductoController extends Controller
 {
     public function index(Request $request)
@@ -16,40 +17,90 @@ class ProductoController extends Controller
     try {
         $query = Producto::with(['categoria', 'marca', 'unidadMedida']);
 
-        // Solo productos activos por defecto (si no se pide otro estado)
-        if ($request->has('estado')) {
-            $query->where('estado', $request->estado);
-        } else {
-            $query->where('estado', 'ACTIVO');
+        // Filtro por estado
+        $estado = $request->query('estado');
+        if ($estado !== null && in_array($estado, ['ACTIVO', 'INACTIVO'])) {
+            $query->where('estado', $estado);
         }
 
-        // Búsqueda por nombre
+        // Búsqueda por nombre, categoría y marca
         if ($request->filled('search')) {
-            $query->where('nombre', 'ilike', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('productos.nombre', 'ilike', '%' . $search . '%')
+                  ->orWhereHas('categoria', function ($q2) use ($search) {
+                      $q2->where('nombre', 'ilike', '%' . $search . '%');
+                  })
+                  ->orWhereHas('marca', function ($q2) use ($search) {
+                      $q2->where('nombre', 'ilike', '%' . $search . '%');
+                  });
+            });
         }
 
-        // Filtro por categoría
         if ($request->filled('categoria_id')) {
             $query->where('categoria_id', $request->categoria_id);
         }
 
-        // Filtro por marca (opcional, si lo necesitás más adelante)
         if ($request->filled('marca_id')) {
             $query->where('marca_id', $request->marca_id);
         }
 
-        // Ordenar del más reciente al más antiguo
-        $productos = $query->orderBy('id', 'desc')->get();
+        $productos = $query->orderBy('id', 'desc')->paginate(20);
 
         return response()->json($productos, 200);
-
     } catch (\Exception $e) {
         return response()->json([
             'message' => 'Error al obtener los productos.',
-            'error'   => $e->getMessage() // podés quitar en producción
+            'error' => $e->getMessage()
         ], 500);
     }
 }
+
+    public function store(ProductoRequest $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $producto = Producto::create([
+                'nombre'           => $request->nombre,
+                'precio_detalle'   => $request->precio_detalle,
+                'precio_mayor'     => $request->precio_mayor,
+                'stock'            => $request->cantidad_inicial,
+                'stock_minimo'     => $request->stock_minimo,
+                'perecedero'       => $request->perecedero,
+                'estado'           => 'ACTIVO',
+                'unidad_medida_id' => $request->unidad_medida_id,
+                'marca_id'         => $request->marca_id,
+                'categoria_id'     => $request->categoria_id
+            ]);
+
+            if ($request->perecedero === 'PERECEDERO') {
+                $lote = Lote::create([
+                    'fecha_vencimiento' => $request->fecha_vencimiento,
+                    'codigo_lote'       => $request->codigo_lote,
+                    'fecha_ingreso'     => now(),
+                    'cantidad_inicial'  => $request->cantidad_inicial,
+                    'cantidad_actual'   => $request->cantidad_inicial,
+                    'estado'            => 'ACTIVO',
+                    'producto_id'       => $producto->id
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message'  => 'Producto creado correctamente.',
+                'producto' => $producto->load('lotes')
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+    'message' => 'Error interno del servidor.',
+    'error' => $e->getMessage()
+], 500);
+        }
+    }
 
     public function show(string $id)
     {

@@ -12,7 +12,7 @@ use App\Http\Controllers\UnidadMedidaController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\MetodoPagoContoller;
+use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ProductoController;
 
@@ -33,10 +33,10 @@ Route::prefix('auth')->group(function(){
 
 //Rutas
 Route::apiResource('categorias', CategoriaController::class);
-Route::apiResource('metodos-pagos', MetodoPagoContoller::class);
+Route::apiResource('metodos-pagos', MetodoPagoController::class);
 Route::apiResource('clientes-creditos', ClienteCreditoController::class);
 Route::apiResource('marcas', MarcaController::class);
-Route::apiResource('unidadesmedidas', UnidadMedidaController::class);
+Route::apiResource('unidades-medidas', UnidadMedidaController::class);
 Route::apiResource('ventas', VentaController::class);
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){

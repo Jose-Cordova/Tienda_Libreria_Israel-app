@@ -36,7 +36,7 @@ class UMRequest extends FormRequest
             Rule::unique('unidades_medidas', 'nombre')->ignore($id)
         ],
         'equivalencia' => [
-            'required', 'string','max:50',
+            'required', 'integer','min:1',
         ],
     ];
     }
