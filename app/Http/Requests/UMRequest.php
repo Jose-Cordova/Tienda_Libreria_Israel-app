@@ -49,7 +49,7 @@ class UMRequest extends FormRequest
         'nombre.max' => 'El nombre no debe tener mas de 50 caracteres.',
         'nombre.unique' => 'Ya existe una unidad de medida con este nombre.',
         'equivalencia.required' => 'La equivalencia es obligatoria.',
-        'equivalencia.max' => 'La equivalencia no debe tener mas de 50 caracteres.',
+        'equivalencia.min' => 'La equivalencia debe tener almenos 1 caracter.',
 
         ];
     }

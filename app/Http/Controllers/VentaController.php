@@ -100,7 +100,9 @@ class VentaController extends Controller
 
             //validaciones de venta
             'user_id' => 'required|exists:users,id',
-            'metodo_pago_id' => 'required|exists:metodos_pagos,id',
+            'metodo_pago_id'  => $request->estado === 'CREDITO'
+                            ? 'nullable|exists:metodos_pagos,id'
+                            : 'required|exists:metodos_pagos,id',
             'tipo_cliente' => 'required|in:DETALLES,MAYORISTA',
             'estado' => 'required|in:PAGADA,CREDITO',
 
