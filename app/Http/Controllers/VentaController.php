@@ -11,6 +11,7 @@ use App\Models\DetalleVenta;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Exception;
+use Illuminate\Validation\ValidationException;
 
 class VentaController extends Controller
 {
@@ -93,9 +94,6 @@ class VentaController extends Controller
      */
     public function store(Request $request)
     {
-    try{
-
-        //validamos la data que viene por $request
         $data = $request->validate([
 
             //validaciones de venta
@@ -118,7 +116,7 @@ class VentaController extends Controller
             'dui' => 'nullable|string|max:10|unique:clientes_creditos,dui',
             'telefono' => 'nullable|string|max:20|unique:clientes_creditos,telefono',
         ]);
-
+    try{
         //iniciamos transaccion
         DB::beginTransaction();
 
@@ -365,15 +363,32 @@ if($producto->perecedero == 'NORMAL'){
             'venta' => $venta
         ], 200);
 
-    }catch(Exception $e){
+    } catch (ValidationException $e) {
+    return response()->json([
+        'message' => 'Datos inválidos',
+        'errors' => $e->errors()
+    ], 422);
 
-        //retornamos error
+} catch (\Illuminate\Database\QueryException $e) {
+    DB::rollBack();
+    // Si es error de unicidad en el DUI
+    if (str_contains($e->getMessage(), 'clientes_creditos_dui_unique')) {
         return response()->json([
-            'message' => 'Error al mostrar la venta',
-            'error' => $e->getMessage()
-        ], 500);
-
+            'message' => 'El DUI ya ha sido registrado.'
+        ], 422);
     }
+    return response()->json([
+        'message' => 'Error en la base de datos',
+        'error' => $e->getMessage()
+    ], 500);
+
+} catch (Exception $e) {
+    DB::rollBack();
+    return response()->json([
+        'message' => 'Error al registrar la venta',
+        'error' => $e->getMessage()
+    ], 500);
+}
     }
 
     /**
