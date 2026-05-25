@@ -9,19 +9,52 @@ use App\Models\Lote;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
+
 class ProductoController extends Controller
 {
-    public function index()
-    {
-        try {
-            $productos = Producto::orderBy('id', 'desc')->get();
-            return response()->json($productos, 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error al obtener los productos.'
-            ], 500);
+    public function index(Request $request)
+{
+    try {
+        $query = Producto::with(['categoria', 'marca', 'unidadMedida']);
+
+        // Filtro por estado
+        $estado = $request->query('estado');
+        if ($estado !== null && in_array($estado, ['ACTIVO', 'INACTIVO'])) {
+            $query->where('estado', $estado);
         }
+
+        // Búsqueda por nombre, categoría y marca
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('productos.nombre', 'ilike', '%' . $search . '%')
+                  ->orWhereHas('categoria', function ($q2) use ($search) {
+                      $q2->where('nombre', 'ilike', '%' . $search . '%');
+                  })
+                  ->orWhereHas('marca', function ($q2) use ($search) {
+                      $q2->where('nombre', 'ilike', '%' . $search . '%');
+                  });
+            });
+        }
+
+        if ($request->filled('categoria_id')) {
+            $query->where('categoria_id', $request->categoria_id);
+        }
+
+        if ($request->filled('marca_id')) {
+            $query->where('marca_id', $request->marca_id);
+        }
+
+        $productos = $query->orderBy('id', 'desc')->paginate(20);
+
+        return response()->json($productos, 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error al obtener los productos.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     public function store(ProductoRequest $request)
     {

@@ -20,8 +20,8 @@ return new class extends Migration
             $table->enum('estado', ['PAGADA', 'CREDITO', 'ANULADA'])->default('PAGADA');
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users');
-            $table->unsignedBigInteger('metodo_pago_id');
-            $table->foreign('metodo_pago_id')->references('id')->on('metodos_pagos');
+            $table->unsignedBigInteger('metodo_pago_id')->nullable(); 
+            $table->foreign('metodo_pago_id')->references('id')->on('metodos_pagos')->nullOnDelete;
             $table->timestamps();
         });
     }
