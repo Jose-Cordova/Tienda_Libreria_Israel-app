@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->date('fecha_registro');
             $table->string('numero_factura', 50)->unique();
-            $table->string('codigo_factura', 50);
+            $table->string('codigo_factura', 50)->unique();
             $table->date('fecha_emision');
             $table->decimal('total', 12,2);
             $table->enum('estado', ['REGISTRADA', 'ANULADA'])->default('REGISTRADA');

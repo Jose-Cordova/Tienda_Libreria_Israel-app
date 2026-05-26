@@ -45,7 +45,7 @@ class ProductoController extends Controller
             $query->where('marca_id', $request->marca_id);
         }
 
-        $productos = $query->orderBy('id', 'desc')->paginate(20);
+        $productos = $query->orderBy('id', 'desc')->paginate(10);
 
         return response()->json($productos, 200);
     } catch (\Exception $e) {
