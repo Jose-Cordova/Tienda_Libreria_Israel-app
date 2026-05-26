@@ -20,15 +20,8 @@ class CompraRequest extends FormRequest
     {
         return [
             //Validacion para factura
-            'numero_factura' => [
-                'required',
-                'string',
-                'max:50',
-                //Validamos que el numero de la factura debe ser unico entre proveedor
-                Rule::unique('compras', 'numero_factura')
-                    ->where('proveedor_id', $this->input('proveedor_id'))], //Proveedor enviado por la peticion
-
-            'codigo_factura' => 'required|string|max:50',
+            'numero_factura' => 'required|string|max:50|unique:compras,numero_factura',
+            'codigo_factura' => 'required|string|max:50|unique:compras,codigo_factura',
             'fecha_emision' => 'required|date',
             'proveedor_id' => 'required|exists:proveedores,id',
             //Validacion para los detalles de compras
@@ -177,9 +170,10 @@ class CompraRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'numero_factura.required' => 'El número de factura es obligatorio.',
-            'numero_factura.unique' => 'Ya existe una compra registrada con ese número de factura para este proveedor.',
-            'codigo_factura.required' => 'El código de factura es obligatorio.',
+            'numero_factura.required' => 'El N° de Control es obligatorio.',
+            'numero_factura.unique' => 'Ya existe una compra registrada con ese N° de Control en el sistema.',
+            'codigo_factura.required' => 'El Código de Generación es obligatorio.',
+            'codigo_factura.unique' => 'Ya existe una compra registrada con ese Código de Generación en el sistema.',
             'fecha_emision.required' => 'La fecha de emisión es obligatoria.',
             'fecha_emision.date' => 'La fecha de emisión no tiene un formato válido.',
             'proveedor_id.required' => 'Debe seleccionar un proveedor.',

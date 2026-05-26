@@ -24,6 +24,8 @@ class CompraController extends Controller
             $buscar = $request->query('buscar');
             $estado = $request->query('estado');
             $proveedorId = $request->query('proveedor_id');
+            $fechaInicio = $request->query('fecha_inicio');
+            $fechaFin = $request->query('fecha_fin');
 
             //Iniciamos la consulta con las relaciones nesesarias
             $query = Compra::with(['user', 'proveedor']);
@@ -44,6 +46,14 @@ class CompraController extends Controller
             //Filtro por proveedor
             if($proveedorId){
                 $query->where('proveedor_id', $proveedorId);
+            }
+
+            //Filtro por fechas
+            if($fechaInicio){
+                $query->whereDate('fecha_registro', '>=', $fechaInicio);
+            }
+            if($fechaFin){
+                $query->whereDate('fecha_registro', '<=', $fechaFin);
             }
 
             $compras = $query->orderBy('id', 'desc')->paginate($paginacion);
