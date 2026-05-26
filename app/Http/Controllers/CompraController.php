@@ -20,22 +20,33 @@ class CompraController extends Controller
     public function index(Request $request)
     {
         try{
-            //Obtenemos todo lo relacionado con compras
-            $query = Compra::with(['user', 'detalleCompras', 'proveedor']);
-            //Filtro por estados
-            if($request->estado){
-                $query->where('estado', $request->estado);
-            }
-            //Filtro por el nombre del proveedor
-            if($request->proveedor_id){
-                $query->where('proveedor_id', $request->proveedor_id);
-            }
-            //Filtrar por codigo de factura
-            if($request->codigo_factura){
-                $query->where('codigo_factura', $request->codigo_factura);
-            }
-            $compras = $query->orderBy('id', 'desc')->get();
+            $paginacion = $request->query('paginacion', 10);
+            $buscar = $request->query('buscar');
+            $estado = $request->query('estado');
+            $proveedorId = $request->query('proveedor_id');
 
+            //Iniciamos la consulta con las relaciones nesesarias
+            $query = Compra::with(['user', 'proveedor']);
+
+            //Filtro de busqueda
+            if($buscar){
+                $query->where(function($q) use ($buscar){
+                   $q->whereRaw('LOWER(numero_factura) LIKE ?', ["%" . strtolower($buscar) . "%"])
+                   ->orWhereHas('proveedor', function($pq) use ($buscar){
+                        $pq->whereRaw('LOWER(nombre) LIKE ?', ["%" . strtolower($buscar) . "%"]);
+                   });
+                });
+            }
+            //Filtro por estado
+            if($estado){
+                $query->where('estado', $estado);
+            }
+            //Filtro por proveedor
+            if($proveedorId){
+                $query->where('proveedor_id', $proveedorId);
+            }
+
+            $compras = $query->orderBy('id', 'desc')->paginate($paginacion);
             return response()->json($compras, 200);
 
         }catch(\Exception $e){
@@ -174,7 +185,7 @@ class CompraController extends Controller
     {
         try{
             //Obtenemos lo que tiene la compra relacionado
-            $compra = Compra::with(['user', 'detalleCompras', 'proveedor'])->findOrFail($id);
+            $compra = Compra::with(['user', 'detalleCompras.producto', 'proveedor', 'lotes'])->findOrFail($id);
             return response()->json($compra, 200);
 
         }catch(ModelNotFoundException $e){

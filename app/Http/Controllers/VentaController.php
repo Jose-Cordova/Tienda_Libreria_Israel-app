@@ -19,10 +19,14 @@ class VentaController extends Controller
      * Display a listing of the resource.
      */
     public function index(Request $request)
-    {
-        try{
+{
+    try {
+        // Validar per_page
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100'
+        ]);
 
-        //consulta base
+        // Consulta base
         $query = Venta::with([
             'user',
             'metodoPago',
@@ -31,63 +35,73 @@ class VentaController extends Controller
             'credito.clienteCredito'
         ]);
 
-        //filtrar por estado de la venta
-        if($request->estado){
+        // Aplicar filtros (los mismos que ya tenés)
+        if ($request->estado) {
             $query->where('estado', $request->estado);
         }
-
-        //filtrar por usuario que realizó la venta
-        if($request->user_id){
+        if ($request->user_id) {
             $query->where('user_id', $request->user_id);
         }
-
-        //filtrar por tipo de cliente
-        if($request->tipoCliente){
+        if ($request->tipoCliente) {
             $query->where('tipo_cliente', $request->tipoCliente);
         }
-
-        //filtrar por estado del producto
-        if($request->estado_producto){
-
-            $query->whereHas('detalleVentas.producto', function($q) use ($request){
-
+        if ($request->estado_producto) {
+            $query->whereHas('detalleVentas.producto', function($q) use ($request) {
                 $q->where('estado', $request->estado_producto);
-
             });
         }
-
-        //filtrar por metodo de pago
-        if($request->metodo_pago_id){
+        if ($request->metodo_pago_id) {
             $query->where('metodo_pago_id', $request->metodo_pago_id);
         }
-
-        //filtrar por fecha inicial
-        if($request->fecha_inicio){
+        if ($request->fecha_inicio) {
             $query->whereDate('fecha', '>=', $request->fecha_inicio);
         }
-
-        //filtrar por fecha final
-        if($request->fecha_fin){
+        if ($request->fecha_fin) {
             $query->whereDate('fecha', '<=', $request->fecha_fin);
         }
 
-        //ordenamos por fecha descendente
-        $ventas = $query->orderBy('fecha', 'desc')->get();
+        // Calcular totales globales (sin paginación, mismos filtros)
+        $totalesQuery = clone $query;
+        $totales = $totalesQuery->selectRaw("
+            COUNT(*) as total_ventas,
+            COUNT(CASE WHEN estado = 'PAGADA' THEN 1 END) as cantidad_pagadas,
+            COALESCE(SUM(CASE WHEN estado = 'PAGADA' THEN total END), 0) as total_pagadas,
+            COUNT(CASE WHEN estado = 'CREDITO' THEN 1 END) as cantidad_credito,
+            COALESCE(SUM(CASE WHEN estado = 'CREDITO' THEN total END), 0) as total_credito,
+            COUNT(CASE WHEN estado = 'ANULADA' THEN 1 END) as cantidad_anuladas,
+            COALESCE(SUM(CASE WHEN estado = 'ANULADA' THEN total END), 0) as total_anuladas
+        ")->first();
 
-        //retornamos respuesta
-        return response()->json($ventas, 200);
+        // Paginación
+        $perPage = $request->get('per_page', 15);
+        $ventas = $query->orderBy('fecha', 'desc')->paginate($perPage);
 
-    }catch(Exception $e){
+        // Agregar totales a la respuesta
+        $response = $ventas->toArray();
+        $response['totales'] = [
+            'pagadas' => [
+                'cantidad' => (int) $totales->cantidad_pagadas,
+                'total' => (float) $totales->total_pagadas,
+            ],
+            'credito' => [
+                'cantidad' => (int) $totales->cantidad_credito,
+                'total' => (float) $totales->total_credito,
+            ],
+            'anuladas' => [
+                'cantidad' => (int) $totales->cantidad_anuladas,
+                'total' => (float) $totales->total_anuladas,
+            ],
+        ];
 
-        //retornamos error
+        return response()->json($response, 200);
+
+    } catch (Exception $e) {
         return response()->json([
             'message' => 'Error al mostrar las ventas',
             'error' => $e->getMessage()
         ], 500);
-
     }
-
-    }
+}
 
     /**
      * Store a newly created resource in storage.
