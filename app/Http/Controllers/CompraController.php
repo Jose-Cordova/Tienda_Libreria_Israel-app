@@ -33,10 +33,10 @@ class CompraController extends Controller
             //Filtro de busqueda
             if($buscar){
                 $query->where(function($q) use ($buscar){
-                   $q->whereRaw('LOWER(numero_factura) LIKE ?', ["%" . strtolower($buscar) . "%"])
-                   ->orWhereHas('proveedor', function($pq) use ($buscar){
+                    $q->whereRaw('LOWER(numero_factura) LIKE ?', ["%" . strtolower($buscar) . "%"])
+                    ->orWhereHas('proveedor', function($pq) use ($buscar){
                         $pq->whereRaw('LOWER(nombre) LIKE ?', ["%" . strtolower($buscar) . "%"]);
-                   });
+                    });
                 });
             }
             //Filtro por estado
