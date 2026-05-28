@@ -34,7 +34,7 @@ class ProveedorRequest extends FormRequest
             'nombre' => 'required|string|min:2|max:50',
             'telefono' => 'required|string|min:8|max:20',
             'email' => ['required', 'email', 'max:100', Rule::unique('proveedores', 'email')->ignore($id)],
-            'direccion' => 'string|min:5|max:250'
+            'direccion' => 'nullable|string|min:5|max:250'
         ];
     }
     //Definimos los mensajes por si no se cumplen las validaciones
@@ -58,7 +58,7 @@ class ProveedorRequest extends FormRequest
         throw new HttpResponseException(
             response()->json([
                 'message' => 'Erro de validacion.',
-                'error' => $validator->errors()
+                'errors' => $validator->errors()
             ], 422)
         );
     }
