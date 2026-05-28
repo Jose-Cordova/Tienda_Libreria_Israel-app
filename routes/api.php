@@ -15,6 +15,8 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ReporteController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -48,3 +50,5 @@ Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaS
 Route::patch('productos/{id}/cambiar-estado', [ProductoController::class, 'cambiarEstado']);
 Route::apiResource('productos', ProductoController::class);
 
+Route::get('/reportes/resumen', [ReporteController::class, 'resumenJson']);
+Route::get('/reportes/general', [ReporteController::class, 'reporteGeneral']);
