@@ -15,15 +15,25 @@ class UnidadMedidaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        try{
-            $unidadesmedidas = UnidadMedida::orderBy('id', 'desc')->get();
-            return response()->json($unidadesmedidas, 200);
+        try {
+            $query = UnidadMedida::query();
 
-        }catch(\Exception $e){
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where('nombre', 'ilike', "%{$search}%");
+            }
+
+            $query->orderBy('id', 'asc');
+            $perPage = $request->query('per_page', 5);
+            $unidades = $query->paginate($perPage);
+
+            return response()->json($unidades, 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Error al obtener las unidades de medida.'
+                'message' => 'Error al obtener las unidades de medida.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
