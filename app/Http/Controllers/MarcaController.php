@@ -15,15 +15,26 @@ class MarcaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        try{
-            $marcas = Marca::orderBy('id', 'desc')->get();
-            return response()->json($marcas, 200);
+        try {
+            $query = Marca::query();
 
-        }catch(\Exception $e){
+            // Búsqueda por nombre
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where('nombre', 'ilike', "%{$search}%");
+            }
+
+            $query->orderBy('id', 'asc');
+            $perPage = $request->query('per_page', 5);
+            $marcas = $query->paginate($perPage);
+
+            return response()->json($marcas, 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Error al obtener las marcas.'
+                'message' => 'Error al obtener las marcas.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -84,7 +95,7 @@ class MarcaController extends Controller
                 'message' => 'Marca actualizada correctamente.',
                 'marca' => $marca
             ], 200);
-            
+
         }catch(\Exception $e){
             return response()->json([
                 'message' => 'Error interno en el servidor.'
