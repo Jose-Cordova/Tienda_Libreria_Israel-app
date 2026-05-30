@@ -45,7 +45,8 @@ class ProductoController extends Controller
             $query->where('marca_id', $request->marca_id);
         }
 
-        $productos = $query->orderBy('id', 'desc')->paginate(10);
+        $productos=$query->orderBy('id','desc')->paginate(10);
+
 
         return response()->json($productos, 200);
     } catch (\Exception $e) {
@@ -121,62 +122,32 @@ class ProductoController extends Controller
     }
 
     public function update(ProductoRequest $request, string $id)
-    {
-        try {
-            $producto = Producto::findOrFail($id);
-            $producto->update([
-                'nombre'           => $request->nombre,
-                'precio_detalle'   => $request->precio_detalle,
-                'precio_mayor'     => $request->precio_mayor,
-                'stock_minimo'     => $request->stock_minimo,
-                'perecedero'       => $request->perecedero,
-                'unidad_medida_id' => $request->unidad_medida_id,
-                'marca_id'         => $request->marca_id,
-                'categoria_id'     => $request->categoria_id
-            ]);
-
-            return response()->json([
-                'message'  => 'Producto actualizado correctamente.',
-                'producto' => $producto
-            ], 200);
-
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Producto no encontrado.'
-            ], 404);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error interno del servidor.'
-            ], 500);
-        }
-    }
-
-    public function cambiarEstado(string $id)
-    {
-        try {
+{
+    try {
         $producto = Producto::findOrFail($id);
-
         $producto->update([
-            'estado' => $producto->estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
+            'nombre'           => $request->nombre,
+            'precio_detalle'   => $request->precio_detalle,
+            'precio_mayor'     => $request->precio_mayor,
+            'stock_minimo'     => $request->stock_minimo,
+            'unidad_medida_id' => $request->unidad_medida_id,
+            'marca_id'         => $request->marca_id,
+            'categoria_id'     => $request->categoria_id
         ]);
 
         return response()->json([
-            'message' => 'Estado del producto actualizado correctamente.',
+            'message'  => 'Producto actualizado correctamente.',
             'producto' => $producto
         ], 200);
 
     } catch (ModelNotFoundException $e) {
-        return response()->json([
-            'message' => 'Producto no encontrado.'
-        ], 404);
-
+        return response()->json(['message' => 'Producto no encontrado.'], 404);
     } catch (\Exception $e) {
         return response()->json([
             'message' => 'Error interno del servidor.'
         ], 500);
     }
-    }
+}
 
     public function alertaStockMinimo()
     {
@@ -201,4 +172,26 @@ class ProductoController extends Controller
             ], 500);
         }
     }
+    public function cambiarEstado($id)
+    {
+        try {
+            $producto = Producto::findOrFail($id);
+            $nuevoEstado = $producto->estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+            $producto->update(['estado' => $nuevoEstado]);
+
+            return response()->json([
+                'message' => 'Estado actualizado correctamente',
+                'estado'  => $nuevoEstado
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al cambiar el estado',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
 }
+

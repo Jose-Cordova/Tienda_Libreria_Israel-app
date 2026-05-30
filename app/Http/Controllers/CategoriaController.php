@@ -15,17 +15,28 @@ class CategoriaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         try{
-            $categorias = Categoria::orderBy('id', 'desc')->get();
-            return response()->json($categorias, 200);
+            $query = Categoria::query();
 
-        }catch(\Exception $e){
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where('nombre', 'ilike', "%{$search}%");
+            }
+            $query->orderBy('id', 'asc');
+
+            $perPage = $request->query('per_page', 5);
+            $categorias = $query->paginate($perPage);
+
+            return response()->json($categorias, 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Error al obtener las categorías.'
+                'message' => 'Error al obtener las categorías.',
+                'error' => $e->getMessage()
             ], 500);
         }
+
     }
 
     /**
