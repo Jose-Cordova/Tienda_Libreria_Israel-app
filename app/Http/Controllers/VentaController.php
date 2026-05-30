@@ -144,7 +144,7 @@ class VentaController extends Controller
             'total' => 0,
             'tipo_cliente' => $data['tipo_cliente'],
             'estado' => $data['estado'],
-            'metodo_pago_id' => $data['metodo_pago_id'],
+            'metodo_pago_id'  => $data['metodo_pago_id'] ?? null,
             'user_id' => $data['user_id']
         ]);
 
