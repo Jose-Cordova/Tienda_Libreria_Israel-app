@@ -45,8 +45,8 @@ class ProductoController extends Controller
             $query->where('marca_id', $request->marca_id);
         }
 
-         $perPage = $request->query('per_page', 5);
-        $productos = $query->orderBy('id', 'desc')->paginate($perPage);
+        $productos=$query->orderBy('id','desc')->paginate(10);
+
 
         return response()->json($productos, 200);
     } catch (\Exception $e) {
