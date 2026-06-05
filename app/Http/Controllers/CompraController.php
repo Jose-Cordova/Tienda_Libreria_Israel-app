@@ -91,6 +91,7 @@ class CompraController extends Controller
 
             //Prosesamos cada detalle de la compra
             foreach($request->detalles as $detalle){
+                $factorConversion = $detalle['factor_conversion'] ?? 1;
                 //Si el producto es nuevo lo creamos
                 if(is_null($detalle['producto_id'])){
                     $producto = Producto::create([
@@ -120,16 +121,17 @@ class CompraController extends Controller
                 //Si el producto es perecedero se crea el lote correspondiente
                 if($producto->perecedero === 'PERECEDERO'){
                     //Para perecederos la cantidad total es la suma de todos los lotes
-                    $cantidadTotal = array_sum(array_column($detalle['lotes'], 'cantidad'));
-
+                    $cantidad = array_sum(array_column($detalle['lotes'], 'cantidad'));
+                    $cantidadTotal = $cantidad * $factorConversion;
                     //Creamos cada lote del detalle
                     foreach($detalle['lotes'] as $lote){
+                        $cantidadLote = $lote['cantidad'] * $factorConversion;
                         Lote::create([
                             'codigo_lote' => $lote['codigo_lote'],
                             'fecha_vencimiento' => $lote['fecha_vencimiento'],
                             'fecha_ingreso' => now(),
-                            'cantidad_inicial' => $lote['cantidad'],
-                            'cantidad_actual' => $lote['cantidad'],
+                            'cantidad_inicial' => $cantidadLote,
+                            'cantidad_actual' => $cantidadLote,
                             'estado' => 'ACTIVO',
                             'producto_id' => $producto->id,
                             'compra_id' => $compra->id
@@ -137,25 +139,29 @@ class CompraController extends Controller
                     }
                 }else{
                     //Para productos normales la cantidad viene directo en el detalle
-                    $cantidadTotal = $detalle['cantidad'];
+                    $cantidadTotal = $detalle['cantidad'] * $factorConversion;
                 }
 
                 //Calculamos los precios de venta al detalle y al mayor y actualizamos
-                $precioDetalle = $detalle['precio_unitario'] * (1 + $detalle['margen_detalle'] / 100);
-                $precioMayor = $detalle['precio_unitario'] * (1 + $detalle['margen_mayor'] / 100);
+                $factorConversion = $detalle['factor_conversion'] ?? 1;
+                $precioUnitarioBase = $detalle['precio_unitario'] / $factorConversion;
+                $precioDetalle = $precioUnitarioBase * (1 + $detalle['margen_detalle'] / 100);
+                $precioMayor = $precioUnitarioBase * (1 + $detalle['margen_mayor'] / 100);
 
                 $producto->update([
                     'precio_detalle' => $precioDetalle,
                     'precio_mayor' => $precioMayor
                 ]);
 
-                //Calculamos el suubtotal y acumulamos el total de la compra
-                $subTotal = $cantidadTotal * $detalle['precio_unitario'];
+                //Calculamos el subtotal y acumulamos el total de la compra
+                $cantidadFactura = $cantidadTotal / $factorConversion;
+                $subTotal = $cantidadFactura * $detalle['precio_unitario'];
                 $totalCompra += $subTotal;
 
                 //Guardamos los detalles de las compras
                 DetalleCompra::create([
-                    'cantidad' => $cantidadTotal,
+                    'cantidad' => $cantidadFactura,
+                    'factor_conversion' => $factorConversion,
                     'precio_unitario' => $detalle['precio_unitario'],
                     'margen_detalle' => $detalle['margen_detalle'],
                     'margen_mayor' => $detalle['margen_mayor'],
@@ -251,7 +257,9 @@ class CompraController extends Controller
                 //Si el producto es perecedero verificar el lote correspondiente no se haya vendido
                 if($producto->perecedero === 'PERECEDERO'){
                     //Buscamos el lote creado en esta compra
-                    $lotes = $producto->lotes->filter(fn($lote) => $lote->compra_id === $compra->id);
+                    $lotes = Lote::where('producto_id', $producto->id)
+                                ->where('compra_id', $compra->id)
+                                ->get();
 
                     if($lotes->isEmpty()){
                         return response()->json([
@@ -267,7 +275,8 @@ class CompraController extends Controller
                     }
                 }else{
                     //Para NORMAL solo verificamos que el stock no quede negativo
-                    if ($producto->stock - $detalle->cantidad < 0) {
+                    $unidades = $detalle->cantidad * $detalle->factor_conversion;
+                    if ($producto->stock - $unidades < 0) {
                         return response()->json([
                             'message' => "No se puede anular la compra. El producto '{$producto->nombre}' no tiene suficiente stock para revertir esta operación."
                         ], 409);
@@ -281,13 +290,14 @@ class CompraController extends Controller
                     $producto = $detalle->producto;
 
                     //Revertimos el stock
-                    $producto->decrement('stock', $detalle->cantidad);
+                    $unidades = $detalle->cantidad * $detalle->factor_conversion;
+                    $producto->decrement('stock', $unidades);
 
                     if($producto->perecedero === 'PERECEDERO'){
                         //Eliminamos solo los lotes que pertenecen a esa compra
-                        $producto->lotes
-                        ->filter(fn($lote) => $lote->compra_id === $compra->id)
-                        ->each(fn($lote) => $lote->delete());
+                        Lote::where('producto_id', $producto->id)
+                            ->where('compra_id', $compra->id)
+                            ->delete();
                     }
                 }
                 //Marcamos la compra como anulada
