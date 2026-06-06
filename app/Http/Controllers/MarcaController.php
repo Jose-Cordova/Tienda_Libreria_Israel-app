@@ -49,7 +49,7 @@ class MarcaController extends Controller
             $marca = Marca::create($request->validated());
 
             return response()->json([
-                'message' => 'marca creada correctamente.',
+                'message' => 'Marca creada correctamente.',
                 'marca' => $marca
             ], 200);
 

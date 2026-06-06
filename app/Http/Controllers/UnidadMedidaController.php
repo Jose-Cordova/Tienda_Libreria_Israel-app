@@ -122,7 +122,7 @@ class UnidadMedidaController extends Controller
 
         }catch(ModelNotFoundException $e){
             return response()->json([
-                'message' => 'Unidada de medida no encontrada.'
+                'message' => 'Unidad de medida no encontrada.'
             ], 404);
 
         }catch(\Exception $e){
@@ -132,3 +132,4 @@ class UnidadMedidaController extends Controller
         }
     }
 }
+

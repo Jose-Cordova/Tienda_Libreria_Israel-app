@@ -44,11 +44,11 @@ class CMMPRequest extends FormRequest
     //Definimos los mensajes para cada cosa que falle
     public function messages()
     {
+        $tipo = str_contains($this->path(), 'categorias') ? 'categoría' : 'marca';
         return [
-        'nombre.required' => 'El nombre es obligatorio.',
-        'nombre.min' => 'El nombre debe tener al menos 2 caracteres.',
-        'nombre.unique' => 'Ya existe una categoría con este nombre.',
-        'nombre.unique' => 'Ya existe una marca con este nombre.'
+            'nombre.required' => 'El nombre es obligatorio.',
+            'nombre.min' => 'El nombre debe tener al menos 2 caracteres.',
+            'nombre.unique' => "Ya existe una {$tipo} con este nombre.",
         ];
     }
     //Si la validacion falla se ejecuta la funcion
