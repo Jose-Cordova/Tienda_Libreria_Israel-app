@@ -65,72 +65,35 @@ tr:nth-child(even) td {
     background-color: #f9f9f9;
 }
 
-/* ── RESUMEN ── */
-.resumen {
-    margin-top: 0;
-    background-color: #f7f7f7;
-    border: 1px solid #ddd;
-    border-top: 2px solid #1B1226;
-    padding: 8px 10px;
-    font-size: 11px;
-}
-
-/* ── GANANCIAS ── */
-.ganancia-positiva { color: #1a7a3e; font-weight: bold; }
-.ganancia-negativa { color: #b03030; font-weight: bold; }
-
-.indicador-positivo {
-    margin-top: 10px;
-    padding: 8px 12px;
-    background-color: #eafaf1;
-    border-left: 4px solid #1a7a3e;
-    color: #1a7a3e;
-    font-weight: bold;
-    font-size: 11px;
-}
-.indicador-negativo {
-    margin-top: 10px;
-    padding: 8px 12px;
-    background-color: #fdedec;
-    border-left: 4px solid #b03030;
-    color: #b03030;
-    font-weight: bold;
-    font-size: 11px;
-}
-
-/* ── TABLA RESUMEN EJECUTIVO ── */
-.tabla-resumen {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 0;
-}
-.tabla-resumen tr {
+/* ── TFOOT: filas de totales dentro del cuadro ── */
+tfoot td {
+    border-top: none;
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
     border-bottom: 1px solid #ddd;
-}
-.tabla-resumen td {
-    border: none;
-    padding: 8px 10px;
-}
-.resumen-label {
-    width: 45%;
+    background-color: #fff;
     font-size: 11px;
+    padding: 5px 8px;
 }
-.resumen-valor {
-    width: 20%;
-    font-size: 13px;
-    font-weight: bold;
-    text-align: right;
+.total-separador td {
+    border: none;
+    border-top: 2px solid #1B1226;
+    padding: 0;
 }
-.resumen-nota {
-    width: 35%;
-    font-size: 10px;
-    color: #888;
-    padding-left: 12px;
+.total-fila td {
+    color: #444;
 }
-.resumen-fila-total {
+.credito-fila td {
+    color: #9a6800;
+    font-style: italic;
+}
+.total-final td {
     background-color: #f0f0f0;
-    border-top: 2px solid #1B1226 !important;
+    font-size: 12px;
+    border-top: 1px solid #bbb;
 }
+
+/* ── COLORES ── */
 .positivo { color: #1a7a3e; }
 .negativo { color: #b03030; }
 .alerta   { color: #9a6800; }
