@@ -40,6 +40,7 @@ class ProductoRequest extends FormRequest
     public function messages(): array
     {
         return [
+
 'nombre.required' => 'El nombre del producto es obligatorio.',
             'nombre.unique'   => 'Ya existe un producto con ese nombre.',
             'nombre.min'      => 'El nombre debe tener al menos 3 caracteres.',
@@ -78,3 +79,4 @@ class ProductoRequest extends FormRequest
         ], 422));
     }
 }
+//XD
