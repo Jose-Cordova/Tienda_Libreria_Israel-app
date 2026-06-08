@@ -317,7 +317,7 @@ if($producto->perecedero == 'NORMAL'){
         $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
     }
 
-    //Registramos credito
+    //Registramos Credito
     Credito::create([
         'monto_adeudado' => $totalVenta,
         'saldo' => 0,
