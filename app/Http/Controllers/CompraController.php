@@ -133,10 +133,12 @@ class CompraController extends Controller
                             'cantidad_inicial' => $cantidadLote,
                             'cantidad_actual' => $cantidadLote,
                             'estado' => 'ACTIVO',
+                            'motivo_inactivo' => null,
                             'producto_id' => $producto->id,
                             'compra_id' => $compra->id
                         ]);
                     }
+
                 }else{
                     //Para productos normales la cantidad viene directo en el detalle
                     $cantidadTotal = $detalle['cantidad'] * $factorConversion;
@@ -294,10 +296,13 @@ class CompraController extends Controller
                     $producto->decrement('stock', $unidades);
 
                     if($producto->perecedero === 'PERECEDERO'){
-                        //Eliminamos solo los lotes que pertenecen a esa compra
+                        //Actualizamos solo los lotes que pertenecen a esa compra
                         Lote::where('producto_id', $producto->id)
                             ->where('compra_id', $compra->id)
-                            ->delete();
+                            ->update([
+                                'estado' => 'INACTIVO',
+                                'motivo_inactivo' => 'ANULACION'
+                            ]);
                     }
                 }
                 //Marcamos la compra como anulada

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Reporte General</title>
     <style>
-        @include('reportes.css.Pdf')
+        @include('reportes.css.pdf')
     </style>
 </head>
 <body>
@@ -21,129 +21,126 @@
     </table>
 
 
-    {{-- RESUMEN DEL PERIODO --}}
-    <div class="seccion-titulo">RESUMEN DEL PERIODO</div>
-    <table class="tabla-resumen">
-        <tr>
-            <td class="resumen-label">Dinero recibido en caja</td>
-            <td class="resumen-valor positivo">${{ number_format($totalCaja, 2) }}</td>
-        </tr>
-        <tr>
-            <td class="resumen-label">Pendiente por cobrar (crédito)</td>
-            <td class="resumen-valor alerta">${{ number_format($totalDeudas, 2) }}</td>
-        </tr>
-        <tr>
-            <td class="resumen-label">Total gastado en compras</td>
-            <td class="resumen-valor negativo">${{ number_format($totalCompras, 2) }}</td>
-        </tr>
-        <tr class="resumen-fila-total">
-            <td class="resumen-label"><strong>Ganancia real del periodo</strong></td>
-            <td class="resumen-valor {{ $ganancia >= 0 ? 'positivo' : 'negativo' }}">
-                <strong>${{ number_format(abs($ganancia), 2) }}</strong>
-            </td>
-        </tr>
-    </table>
+    {{-- VENTAS                                 --}}
 
-    {{-- NOTIFICACIÓN DE ESTADO (GANANCIA/PÉRDIDA) --}}
-    <div class="{{ $ganancia >= 0 ? 'indicador-positivo' : 'indicador-negativo' }}" style="margin-top: 10px; padding: 8px; border-radius: 5px;">
-        @if ($ganancia >= 0)
-            <strong>Ganancia real:</strong> ${{ number_format($ganancia, 2) }}
-            — <strong>Deudas pendientes por cobrar:</strong> ${{ number_format($totalDeudas, 2) }}
-        @else
-            <strong>Pérdida de:</strong> ${{ number_format(abs($ganancia), 2) }}
-            — <strong>Deudas pendientes por cobrar:</strong> ${{ number_format($totalDeudas, 2) }}
-        @endif
-    </div>
-
-    <br>
-
-    {{-- VENTAS --}}
     <div class="seccion-titulo">VENTAS ({{ $totalRegistrosV }} registros)</div>
+
     <table>
         <thead>
             <tr>
-                <th width="20px"></th>
+                <th>#</th>
                 <th>Correlativo</th>
                 <th>Fecha</th>
                 <th>Cliente</th>
                 <th>Tipo</th>
-                <th>Método Pago</th>
+                <th>Metodo Pago</th>
                 <th>Estado</th>
+                <th style="text-align:center;">Arts.</th>
                 <th style="text-align:right;">Total</th>
             </tr>
         </thead>
         <tbody>
-            @forelse ($ventas as $venta)
+            @forelse ($ventas as $i => $venta)
                 <tr>
-                    <td>{{ $loop->iteration }}</td> {{-- Contador automático --}}
+                    <td style="text-align:center;">{{ $i + 1 }}</td>
                     <td>{{ $venta['correlativo'] }}</td>
                     <td>{{ $venta['fecha'] }}</td>
                     <td>{{ $venta['cliente'] }}</td>
                     <td>{{ ucfirst(strtolower($venta['tipo_cliente'])) }}</td>
                     <td>{{ $venta['metodo_pago'] }}</td>
                     <td>{{ ucfirst(strtolower($venta['estado'])) }}</td>
+                    <td style="text-align:center;">{{ $venta['articulos'] }}</td>
                     <td style="text-align:right;">${{ number_format($venta['total'], 2) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" style="text-align:center; color:#999; padding:10px;">
+                    <td colspan="9" style="text-align:center; color:#999; padding:10px;">
                         No hay ventas en el periodo seleccionado.
                     </td>
                 </tr>
             @endforelse
         </tbody>
+
+        {{-- TOTALES DENTRO DEL CUADRO --}}
+        <tfoot>
+            <tr class="total-separador">
+                <td colspan="9"></td>
+            </tr>
+            <tr class="total-fila">
+                <td colspan="7">Ventas en efectivo</td>
+                <td colspan="2" style="text-align:right;">${{ number_format($totalEfectivo, 2) }}</td>
+            </tr>
+            <tr class="total-fila">
+                <td colspan="7">Ventas en transferencia</td>
+                <td colspan="2" style="text-align:right;">${{ number_format($totalTransferencia, 2) }}</td>
+            </tr>
+            <tr class="total-fila credito-fila">
+                <td colspan="7">Pendiente por cobrar (credito)</td>
+                <td colspan="2" style="text-align:right;">${{ number_format($totalDeudas, 2) }}</td>
+            </tr>
+            <tr class="total-final">
+                <td colspan="7"><strong>Total ventas cobradas</strong></td>
+                <td colspan="2" style="text-align:right;"><strong>${{ number_format($totalCaja, 2) }}</strong></td>
+            </tr>
+        </tfoot>
     </table>
 
-    <div class="resumen">
-        <strong>En caja:</strong> ${{ number_format($totalCaja, 2) }}
-        &nbsp;|&nbsp;
-        <strong>Pendiente cobrar:</strong> ${{ number_format($totalDeudas, 2) }}
-    </div>
 
 
-    {{-- COMPRAS --}}
+    {{-- COMPRAS                                --}}
+
     <div class="seccion-titulo">COMPRAS A PROVEEDORES ({{ $totalRegistrosC }} registros)</div>
+
     <table>
         <thead>
             <tr>
-                <th width="20px"></th>
+                <th>#</th>
                 <th>Proveedor</th>
-                <th>Teléfono</th>
+                <th>Telefono</th>
                 <th>N° Factura</th>
                 <th>Fecha</th>
+                <th style="text-align:center;">Productos</th>
                 <th style="text-align:right;">Total</th>
             </tr>
         </thead>
         <tbody>
-            @forelse ($compras as $compra)
+            @forelse ($compras as $i => $compra)
                 <tr>
-                    <td>{{ $loop->iteration }}</td> {{-- Contador automático --}}
+                    <td style="text-align:center;">{{ $i + 1 }}</td>
                     <td>{{ $compra['proveedor'] }}</td>
                     <td>{{ $compra['telefono'] }}</td>
                     <td>{{ $compra['numero_factura'] }}</td>
                     <td>{{ $compra['fecha'] }}</td>
+                    <td style="text-align:center;">{{ $compra['productos'] }}</td>
                     <td style="text-align:right;">${{ number_format($compra['total'], 2) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" style="text-align:center; color:#999; padding:10px;">
+                    <td colspan="7" style="text-align:center; color:#999; padding:10px;">
                         No hay compras en el periodo seleccionado.
                     </td>
                 </tr>
             @endforelse
         </tbody>
-    </table>
 
-    <div class="resumen">
-        <strong>Total gastado en compras:</strong> ${{ number_format($totalCompras, 2) }}
-    </div>
+        {{-- TOTAL DENTRO DEL CUADRO --}}
+        <tfoot>
+            <tr class="total-separador">
+                <td colspan="7"></td>
+            </tr>
+            <tr class="total-final">
+                <td colspan="5"><strong>Total compras del periodo</strong></td>
+                <td colspan="2" style="text-align:right;"><strong>${{ number_format($totalCompras, 2) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
 
 
     {{-- PAGINACION --}}
     <script type="text/php">
         if ( isset($pdf) ) {
             $font = $fontMetrics->get_font("DejaVu Sans", "normal");
-            $pdf->page_text(500, 820, "Página {PAGE_NUM} de {PAGE_COUNT}", $font, 9);
+            $pdf->page_text(500, 820, "Pagina {PAGE_NUM} de {PAGE_COUNT}", $font, 9);
         }
     </script>
 
