@@ -13,6 +13,7 @@ class Lote extends Model
         'cantidad_inicial',
         'cantidad_actual',
         'estado',
+        'motivo_inactivo',
         'producto_id',
         'compra_id'
     ];

@@ -19,10 +19,11 @@ return new class extends Migration
             $table->integer('cantidad_inicial');
             $table->integer('cantidad_actual');
             $table->enum('estado', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
+            $table->enum('motivo_inactivo', ['ANULACION', 'VENCIMIENTO', 'AGOTADO'])->nullable();
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
             $table->unsignedBigInteger('compra_id')->nullable();
-            $table->foreign('compra_id')->references('id')->on('compras')->nullOnDelete();;
+            $table->foreign('compra_id')->references('id')->on('compras')->nullOnDelete();
             $table->timestamps();
         });
     }

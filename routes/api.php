@@ -16,6 +16,7 @@ use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\DashboardController;
 
 
 Route::get('/user', function (Request $request) {
@@ -45,6 +46,7 @@ Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('proveedores', ProveedorController::class);
     Route::apiResource('compras', CompraController::class);
     Route::post('compras/{id}/anular', [CompraController::class, 'anular']);
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 });
 Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaStockMinimo']);
 Route::patch('productos/{id}/cambiar-estado', [ProductoController::class, 'cambiarEstado']);

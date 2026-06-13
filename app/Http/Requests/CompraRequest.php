@@ -28,6 +28,7 @@ class CompraRequest extends FormRequest
             'detalles' => 'required|array|min:1',
             'detalles.*.producto_id' => 'nullable|exists:productos,id',
             'detalles.*.cantidad' => 'nullable|integer|min:1',
+            'detalles.*.factor_conversion' => 'nullable|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric|min:0.01',
             'detalles.*.margen_detalle' => 'required|numeric|min:0.01',
             'detalles.*.margen_mayor' => 'required|numeric|min:0.01',
@@ -80,6 +81,17 @@ class CompraRequest extends FormRequest
                             );
                         }
                     }
+                    //Validamos que no se cree el mismo producto 2 veses
+                    if(!empty($detalle['nombre'])){
+                        $existeProducto = Producto::whereRaw('LOWER(nombre) = ?', [strtolower($detalle['nombre'])])->exists();
+                        if($existeProducto){
+                            $validator->errors()->add(
+                                "detalles.$index.nombre",
+                                "Ya existe un producto con el nombre '{$detalle['nombre']}' en la base de datos."
+                            );
+                        }
+                    }
+                    
                 }else{
                     //Validamos si el producto ya esta en el detalle
                     if(in_array($productoId, $productosExistentes)){
@@ -192,6 +204,8 @@ class CompraRequest extends FormRequest
             'detalles.*.stock_minimo.min' => 'El stock mínimo debe ser al menos 1.',
             'detalles.*.lotes.*.fecha_vencimiento.after' => 'La fecha de vencimiento debe ser posterior a hoy.',
             'detalles.*.lotes.*.cantidad.min' => 'La cantidad del lote debe ser al menos 1.',
+            'detalles.*.factor_conversion.integer' => 'El factor de conversión debe ser un número entero.',
+            'detalles.*.factor_conversion.min' => 'El factor de conversión debe ser al menos 1.'
         ];
     }
 
