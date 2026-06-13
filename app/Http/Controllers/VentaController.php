@@ -250,6 +250,7 @@ if($producto->perecedero == 'NORMAL'){
         //si el lote llega a 0 cambiamos estado
         if($lote->cantidad_actual <= 0){
             $lote->estado = 'INACTIVO';
+            $lote->motivo_inactivo = 'AGOTADO';
         }
 
         $lote->save();
