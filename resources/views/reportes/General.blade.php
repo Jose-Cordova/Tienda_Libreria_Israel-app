@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Reporte General</title>
     <style>
-        @include('reportes.css.pdf')
+        @include('reportes.css.Pdf')
     </style>
 </head>
 <body>

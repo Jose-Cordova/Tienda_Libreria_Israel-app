@@ -28,12 +28,12 @@ class ProductoController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('productos.nombre', 'ilike', '%' . $search . '%')
-                  ->orWhereHas('categoria', function ($q2) use ($search) {
-                      $q2->where('nombre', 'ilike', '%' . $search . '%');
-                  })
-                  ->orWhereHas('marca', function ($q2) use ($search) {
-                      $q2->where('nombre', 'ilike', '%' . $search . '%');
-                  });
+                ->orWhereHas('categoria', function ($q2) use ($search) {
+                    $q2->where('nombre', 'ilike', '%' . $search . '%');
+                    })
+                    ->orWhereHas('marca', function ($q2) use ($search) {
+                        $q2->where('nombre', 'ilike', '%' . $search . '%');
+                    });
             });
         }
 
