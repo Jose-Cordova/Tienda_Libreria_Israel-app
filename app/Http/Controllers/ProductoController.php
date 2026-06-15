@@ -23,7 +23,7 @@ class ProductoController extends Controller
             $query->where('estado', $estado);
         }
 
-        // Búsqueda por nombre, categoría y marca
+        // Búsqueda por Nombre, categoría y marca
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
