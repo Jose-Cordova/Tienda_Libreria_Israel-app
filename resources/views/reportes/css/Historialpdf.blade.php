@@ -12,9 +12,6 @@ body {
     padding-bottom: 12px;
     margin-bottom: 20px;
 }
-.logo {
-    width: 70px;
-}
 .empresa {
     font-size: 20px;
     font-weight: bold;
@@ -31,6 +28,11 @@ body {
     font-size: 10px;
     margin-top: 4px;
     color: #888;
+}
+.meta {
+    font-size: 9px;
+    margin-top: 6px;
+    color: #aaa;
 }
 
 /* ── SECCIÓN ── */
@@ -65,7 +67,20 @@ tr:nth-child(even) td {
     background-color: #f9f9f9;
 }
 
-/* ── TFOOT: filas de totales dentro del cuadro ── */
+/* ── BADGES DE ESTADO ── */
+.badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+}
+.badge-pagada  { background: #e6f4ea; color: #2d7a3a; }
+.badge-credito { background: #fff3e0; color: #9a6800; }
+.badge-anulada { background: #fce8e8; color: #b71c1c; }
+
+/* ── TFOOT ── */
 tfoot td {
     border-top: none;
     border-left: 1px solid #ddd;
@@ -87,44 +102,18 @@ tfoot td {
     color: #9a6800;
     font-style: italic;
 }
-.total-final td {
-    background-color: #f0f0f0;
-    font-size: 12px;
-    border-top: 1px solid #bbb;
-}
-
-/* ── COLORES ── */
-.positivo { color: #1a7a3e; }
-.negativo { color: #b03030; }
-.alerta   { color: #9a6800; }
-
-/* ── CUADRO DE TOTALES FINAL ── */
-.total-grupo td {
-    background-color: #e8e8e8;
-    font-size: 11px;
-    padding: 6px 8px;
-    border: 1px solid #ddd;
-    color: #1B1226;
-}
-.total-fila td {
-    padding: 5px 8px;
-    border: 1px solid #ddd;
-    background-color: #fff;
-    color: #444;
-}
-.credito-fila td {
-    color: #9a6800;
+.anulada-fila td {
+    color: #b71c1c;
     font-style: italic;
 }
 .total-final td {
     background-color: #f0f0f0;
     font-size: 12px;
-    padding: 6px 8px;
-    border: 1px solid #bbb;
     border-top: 2px solid #1B1226;
+    padding: 6px 8px;
 }
-.total-separador td {
-    border: none;
-    padding: 6px 0;
-    background: #fff;
-}
+
+/* ── COLORES UTILITARIOS ── */
+.positivo { color: #1a7a3e; }
+.negativo { color: #b03030; }
+.alerta   { color: #9a6800; }

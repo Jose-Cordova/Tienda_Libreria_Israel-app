@@ -16,7 +16,9 @@ use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ReporteController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReporteHistorialController;
+use App\Http\Controllers\ReporteComprasController;
+use App\Http\Controllers\ReporteCreditoController;use App\Http\Controllers\DashboardController;
 
 
 Route::get('/user', function (Request $request) {
@@ -54,3 +56,15 @@ Route::apiResource('productos', ProductoController::class);
 
 Route::get('/reportes/resumen', [ReporteController::class, 'resumenJson']);
 Route::get('/reportes/general', [ReporteController::class, 'reporteGeneral']);
+
+
+Route::get('/reportes/historial-datos', [ReporteHistorialController::class, 'historialDatos']);
+Route::get('/reportes/historial',       [ReporteHistorialController::class, 'reporteHistorial']);
+
+    Route::get('/reportes/compras', [ReporteComprasController::class, 'reporteCompras']);
+    Route::get('/reportes/compras-datos', [ReporteComprasController::class, 'comprasDatos']);
+
+Route::get('/reportes/creditos', [ReporteCreditoController::class, 'reporteCreditos']);
+Route::get('/reportes/creditos-datos', [ReporteCreditoController::class, 'creditosDatos']);
+
+
