@@ -40,22 +40,27 @@ class ReporteCreditoController extends Controller
                 'cc.id',
                 'cc.nombre',
                 'cc.telefono',
-                // Se integran los filtros de fecha desde Vue
+                // se agrega un sub consulta y transforma  cada venta para darle formato al reporte
                 DB::raw("(SELECT COALESCE(SUM(v.total), 0)
                     FROM ventas v
                     JOIN creditos c ON v.id = c.venta_id
                     WHERE c.cliente_credito_id = cc.id" .
+                    // Si se han proporcionado fechas, se filtra por el rango
                     ($fechaInicio && $fechaFin ? " AND c.created_at BETWEEN '$fechaInicio 00:00:00' AND '$fechaFin 23:59:59'" : "") .
                     ") as total_deuda"),
+                    // Se agrega una subconsulta para calcular el total abonado por cada cliente
                 DB::raw("(SELECT COALESCE(SUM(a.monto), 0)
                     FROM abonos a
                     JOIN creditos c ON a.credito_id = c.id
                     WHERE c.cliente_credito_id = cc.id" .
+                    // Si se han proporcionado fechas, se filtra por el rango
                     ($fechaInicio && $fechaFin ? " AND a.created_at BETWEEN '$fechaInicio 00:00:00' AND '$fechaFin 23:59:59'" : "") .
                     ") as total_abonado")
             );
 
+            //Ejecuta la consulta y recorre cada cliente para calcular su saldo actual
         return $query->get()->map(function ($c) use ($request) {
+            // Convierte a decimales y resta
             $saldo = (float)$c->total_deuda - (float)$c->total_abonado;
 
             // Filtro preliminar por estado
@@ -79,7 +84,7 @@ class ReporteCreditoController extends Controller
                 return $c['saldo_pendiente'] <= 0;
             }
 
-            // Si es pendiente o selecciona "todos", se muestran los que tienen saldos activos
+            // Si es pendiente o seleciona todo, se muestran los que tienen saldos activos
             return $c['saldo_pendiente'] > 0;
         });
     }

@@ -12,6 +12,7 @@ class ReporteComprasController extends Controller
     /**
      * Devuelve datos JSON para la vista Vue
      */
+    //
     public function comprasDatos(Request $request)
     {
         $request->validate([
@@ -20,9 +21,8 @@ class ReporteComprasController extends Controller
             'estado'        => 'nullable|in:REGISTRADA,ANULADA',
             'proveedor_id'  => 'nullable|integer|exists:proveedores,id',
         ]);
-
+          // Se reutiliza la consulta para obtener los datos filtrados
         $compras = $this->obtenerCompras($request);
-
         return response()->json(['compras' => $compras->values()]);
     }
 
@@ -44,9 +44,8 @@ class ReporteComprasController extends Controller
         $fechaFin = $request->fecha_fin
             ? Carbon::parse($request->fecha_fin)->format('d/m/Y')
             : 'Hoy';
-
+         // Se reutiliza la consulta para obtener los datos filtrado
         $compras = $this->obtenerCompras($request);
-
         $totalRegistros   = $compras->count();
         $totalRegistradas = $compras->where('estado', 'REGISTRADA')->sum('total');
         $totalAnuladas    = $compras->where('estado', 'ANULADA')->sum('total');
@@ -66,6 +65,7 @@ class ReporteComprasController extends Controller
      */
     private function obtenerCompras(Request $request)
     {
+         //Preparamos la consulta
         $query = DB::table('compras as c')
             ->join('proveedores as p', 'c.proveedor_id', '=', 'p.id')
             ->select(
@@ -76,6 +76,7 @@ class ReporteComprasController extends Controller
                 'c.total',
                 'p.nombre as proveedor',
                 'p.telefono',
+                    // Se agrega una subconsulta para contar la cantidad de productos en cada compra
                 DB::raw('(SELECT COALESCE(SUM(cantidad), 0) FROM detalle_compras WHERE compra_id = c.id) as productos')
             )
             ->orderBy('c.fecha_registro', 'desc');
@@ -84,7 +85,7 @@ class ReporteComprasController extends Controller
         if ($request->proveedor_id) $query->where('c.proveedor_id', $request->proveedor_id);
         if ($request->fecha_inicio) $query->whereDate('c.fecha_registro', '>=', $request->fecha_inicio);
         if ($request->fecha_fin)    $query->whereDate('c.fecha_registro', '<=', $request->fecha_fin);
-
+        // Ejecutamos la consulta y formateamos los resultados
         return $query->get()->map(function ($c) {
             return [
                 'numero_factura' => $c->numero_factura,

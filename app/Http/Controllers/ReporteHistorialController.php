@@ -8,9 +8,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
 class ReporteHistorialController extends Controller
+
 {
     public function reporteHistorial(Request $request)
     {
+        // devuelve datos JSON para la vista Vue
         $request->validate([
             'fecha_inicio'   => 'nullable|date',
             'fecha_fin'      => 'nullable|date|after_or_equal:fecha_inicio',
@@ -25,7 +27,7 @@ class ReporteHistorialController extends Controller
         $fechaFin = $request->fecha_fin
             ? Carbon::parse($request->fecha_fin)->format('d/m/Y')
             : 'Hoy';
-
+         // Se obtiene el listado de ventas filtrado según los parámetros de la solicitud
         $ventas = $this->obtenerVentas($request);
 
         $totalRegistros     = $ventas->count();
@@ -37,7 +39,7 @@ class ReporteHistorialController extends Controller
         $totalCobrado       = $ventasPagadas->sum('total');
         $totalesPorMetodo   = $ventasPagadas->groupBy('metodo_pago')->map(fn($g) => $g->sum('total'));
         $generadoEn         = Carbon::now()->format('d/m/Y H:i');
-
+       // Se genera el PDF del reporte de historial de ventas
         return Pdf::loadView('reportes.Historial', compact(
             'ventas', 'totalRegistros', 'totalEfectivo', 'totalTransferencia',
             'totalDeudas', 'totalAnuladas', 'totalCobrado', 'totalesPorMetodo',
@@ -55,7 +57,7 @@ class ReporteHistorialController extends Controller
             'estado'       => 'nullable|in:PAGADA,CREDITO,ANULADA',
             'tipo_cliente' => 'nullable|in:DETALLES,MAYORISTA',
         ]);
-
+          // Se obtiene el listado de ventas filtrado según los parámetros de la solicitud
         $ventas = $this->obtenerVentas($request);
 
         return response()->json(['ventas' => $ventas->values()]);
@@ -63,6 +65,7 @@ class ReporteHistorialController extends Controller
 
     private function obtenerVentas(Request $request)
     {
+        // Se prepara la consulta
         $query = DB::table('ventas as v')
             ->leftJoin('metodos_pagos as mp', 'v.metodo_pago_id', '=', 'mp.id')
             ->leftJoin('creditos as c', 'v.id', '=', 'c.venta_id')
@@ -71,6 +74,7 @@ class ReporteHistorialController extends Controller
                 'v.correlativo', 'v.fecha', 'v.tipo_cliente', 'v.estado', 'v.total',
                 'mp.nombre as metodo_pago',
                 'cc.nombre as cliente_credito_nombre',
+                // Se agrega una subconsulta para contar la cantidad de artículos en cada venta
                 DB::raw('(SELECT COALESCE(SUM(cantidad), 0) FROM detalle_ventas WHERE venta_id = v.id) as articulos')
             )
             ->orderBy('v.fecha', 'desc');
@@ -80,15 +84,17 @@ class ReporteHistorialController extends Controller
         if ($request->tipo_cliente)   $query->where('v.tipo_cliente', $request->tipo_cliente);
         if ($request->fecha_inicio)   $query->whereDate('v.fecha', '>=', $request->fecha_inicio);
         if ($request->fecha_fin)      $query->whereDate('v.fecha', '<=', $request->fecha_fin);
-
+//
         return $query->get()->map(function ($v) {
             return [
                 'correlativo'  => $v->correlativo,
                 'fecha'        => Carbon::parse($v->fecha)->format('d/m/Y'),
                 'hora'         => Carbon::parse($v->fecha)->format('H:i'),
+                //Si es credito muestra el cliente o sin nombre, si es efectivo es Consumidor final
                 'cliente'      => $v->estado === 'CREDITO'
                                     ? ($v->cliente_credito_nombre ?? 'Sin nombre')
                                     : 'Consumidor final',
+                //normaliza el texto primera letra Mayúscula y el resto minúsculas
                 'tipo_cliente' => ucfirst(strtolower($v->tipo_cliente)),
                 'metodo_pago'  => $v->metodo_pago ?? '—',
                 'estado'       => $v->estado,
@@ -98,3 +104,5 @@ class ReporteHistorialController extends Controller
         });
     }
 }
+
+
