@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('unidades_medidas', function (Blueprint $table) {
+        Schema::create('empaques', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre', 50);
-            $table->integer('equivalencia');
+            $table->string('nombre', 50)->unique();
             $table->timestamps();
         });
     }
@@ -24,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('unidades_medidas');
+        Schema::dropIfExists('empaques');
     }
 };

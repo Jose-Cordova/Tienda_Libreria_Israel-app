@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->integer('cantidad');
             $table->decimal('precio_unitario', 12,2);
-            $table->integer('factor_conversion')->default(1);
             $table->decimal('margen_detalle', 12,2);
             $table->decimal('margen_mayor', 12,2);
             $table->decimal('subtotal', 12,2);
