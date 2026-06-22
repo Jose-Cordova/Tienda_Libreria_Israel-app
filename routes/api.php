@@ -18,7 +18,8 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\ReporteHistorialController;
 use App\Http\Controllers\ReporteComprasController;
-use App\Http\Controllers\ReporteCreditoController;use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReporteCreditoController;
+use App\Http\Controllers\DashboardController;
 
 
 Route::get('/user', function (Request $request) {
