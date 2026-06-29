@@ -15,7 +15,7 @@ class ProductoController extends Controller
     public function index(Request $request)
 {
     try {
-        $query = Producto::with(['categoria', 'marca', 'unidadMedida']);
+        $query = Producto::with(['categoria', 'marca']);
 
         // Filtro por estado
         $estado = $request->query('estado');
