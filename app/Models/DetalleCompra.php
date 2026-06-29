@@ -9,6 +9,7 @@ class DetalleCompra extends Model
     protected $table = 'detalle_compras';
     protected $fillable = [
         'cantidad',
+        'factor_conversion',
         'precio_unitario',
         'margen_detalle',
         'margen_mayor',

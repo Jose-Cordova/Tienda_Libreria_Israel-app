@@ -88,10 +88,10 @@ class CompraRequest extends FormRequest
                             $validator->errors()->add(
                                 "detalles.$index.nombre",
                                 "Ya existe un producto con el nombre '{$detalle['nombre']}' en la base de datos."
-                            );  
+                            );
                         }
                     }
-
+                    
                 }else{
                     //Validamos si el producto ya esta en el detalle
                     if(in_array($productoId, $productosExistentes)){
