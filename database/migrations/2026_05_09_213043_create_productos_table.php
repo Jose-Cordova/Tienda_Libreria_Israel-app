@@ -20,6 +20,8 @@ return new class extends Migration
             $table->integer('stock_minimo');
             $table->enum('perecedero', ['NORMAL', 'PERECEDERO']);
             $table->enum('estado', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
+            $table->unsignedBigInteger('unidad_medida_id');
+            $table->foreign('unidad_medida_id')->references('id')->on('unidades_medidas');
             $table->unsignedBigInteger('marca_id');
             $table->foreign('marca_id')->references('id')->on('marcas');
             $table->unsignedBigInteger('categoria_id');

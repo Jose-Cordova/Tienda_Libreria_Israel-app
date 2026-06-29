@@ -14,6 +14,7 @@ class Producto extends Model
         'stock_minimo',
         'perecedero',
         'estado',
+        'unidad_medida_id',
         'marca_id',
         'categoria_id'
     ];
@@ -38,10 +39,6 @@ class Producto extends Model
     {
         return $this->hasMany(DetalleCompra::class);
     }
-    public function productoEmpaques()
-    {
-        return $this->hasMany(ProductoEmpaque::class);
-    }
     public function lotes()
     {
         return $this->hasMany(Lote::class);
@@ -49,6 +46,10 @@ class Producto extends Model
     public function productoDaniados()
     {
         return $this->hasMany(ProductoDaniado::class);
+    }
+    public function unidadMedida()
+    {
+        return $this->belongsTo(UnidadMedida::class);
     }
     public function marca()
     {
