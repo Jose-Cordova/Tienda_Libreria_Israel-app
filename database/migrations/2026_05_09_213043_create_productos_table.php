@@ -18,10 +18,9 @@ return new class extends Migration
             $table->decimal('precio_mayor', 12,2);
             $table->integer('stock');
             $table->integer('stock_minimo');
+            $table->enum('sesion', ['DESPENSA', 'LIBRERIA', 'MEDICAMENTO']);
             $table->enum('perecedero', ['NORMAL', 'PERECEDERO']);
             $table->enum('estado', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
-            $table->unsignedBigInteger('unidad_medida_id');
-            $table->foreign('unidad_medida_id')->references('id')->on('unidades_medidas');
             $table->unsignedBigInteger('marca_id');
             $table->foreign('marca_id')->references('id')->on('marcas');
             $table->unsignedBigInteger('categoria_id');

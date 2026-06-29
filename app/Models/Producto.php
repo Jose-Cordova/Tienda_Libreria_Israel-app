@@ -12,9 +12,9 @@ class Producto extends Model
         'precio_mayor',
         'stock',
         'stock_minimo',
+        'sesion',
         'perecedero',
         'estado',
-        'unidad_medida_id',
         'marca_id',
         'categoria_id'
     ];
@@ -46,10 +46,6 @@ class Producto extends Model
     public function productoDaniados()
     {
         return $this->hasMany(ProductoDaniado::class);
-    }
-    public function unidadMedida()
-    {
-        return $this->belongsTo(UnidadMedida::class);
     }
     public function marca()
     {
