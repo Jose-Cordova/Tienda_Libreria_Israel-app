@@ -101,10 +101,10 @@ class CompraController extends Controller
                         'stock' => 0,
                         'stock_minimo' => $detalle['stock_minimo'],
                         'perecedero' => $detalle['perecedero'],
+                        'sesion' => $detalle['sesion'],
                         'estado' => 'ACTIVO',
                         'marca_id' => $detalle['marca_id'],
-                        'categoria_id' => $detalle['categoria_id'],
-                        'unidad_medida_id' => $detalle['unidad_medida_id']
+                        'categoria_id' => $detalle['categoria_id']
                     ]);
 
                 }else{

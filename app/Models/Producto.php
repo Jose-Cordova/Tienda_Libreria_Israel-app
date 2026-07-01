@@ -55,4 +55,9 @@ class Producto extends Model
     {
         return $this->belongsTo(Categoria::class);
     }
+    //Relacion para obtener los datos de la ultima compra del producto
+    public function ultimoDetalleCompra()
+    {
+        return $this->hasOne(DetalleCompra::class)->latestOfMany();
+    }
 }
