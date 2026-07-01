@@ -12,6 +12,7 @@ class Producto extends Model
         'precio_mayor',
         'stock',
         'stock_minimo',
+        'sesion',
         'perecedero',
         'estado',
         'marca_id',
@@ -38,10 +39,6 @@ class Producto extends Model
     {
         return $this->hasMany(DetalleCompra::class);
     }
-    public function productoEmpaques()
-    {
-        return $this->hasMany(ProductoEmpaque::class);
-    }
     public function lotes()
     {
         return $this->hasMany(Lote::class);
@@ -57,5 +54,10 @@ class Producto extends Model
     public function categoria()
     {
         return $this->belongsTo(Categoria::class);
+    }
+    //Relacion para obtener los datos de la ultima compra del producto
+    public function ultimoDetalleCompra()
+    {
+        return $this->hasOne(DetalleCompra::class)->latestOfMany();
     }
 }

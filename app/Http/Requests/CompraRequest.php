@@ -38,8 +38,8 @@ class CompraRequest extends FormRequest
             'detalles.*.perecedero' => 'nullable|in:NORMAL,PERECEDERO',
             'detalles.*.marca_id' => 'nullable|exists:marcas,id',
             'detalles.*.categoria_id' => 'nullable|exists:categorias,id',
-            'detalles.*.unidad_medida_id' => 'nullable|exists:unidades_medidas,id',
-            //Validacion para los lotes cuando el prodcuto es perecedero
+            'detalles.*.sesion' => 'nullable|in:DESPENSA,LIBRERIA,MEDICAMENTO',
+            //Validacion para los lotes cuando el producto es perecedero
             'detalles.*.lotes' => 'nullable|array|min:1',
             'detalles.*.lotes.*.codigo_lote' => 'nullable|string|max:50',
             'detalles.*.lotes.*.fecha_vencimiento' => 'nullable|date|after:today',
@@ -69,7 +69,7 @@ class CompraRequest extends FormRequest
                         'perecedero' => 'El tipo de perecibilidad',
                         'marca_id' => 'La marca',
                         'categoria_id' => 'La categoría',
-                        'unidad_medida_id' => 'La unidad de medida'
+                        'sesion' => 'La sesión de medida'
                     ];
                     //Recorremos cada uno de los campos para el producto nuevo
                     foreach($camposRequeridos as $campo => $etiqueta){
@@ -88,7 +88,7 @@ class CompraRequest extends FormRequest
                             $validator->errors()->add(
                                 "detalles.$index.nombre",
                                 "Ya existe un producto con el nombre '{$detalle['nombre']}' en la base de datos."
-                            );  
+                            );
                         }
                     }
 
