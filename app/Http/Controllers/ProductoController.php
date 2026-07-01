@@ -15,7 +15,14 @@ class ProductoController extends Controller
     public function index(Request $request)
 {
     try {
-        $query = Producto::with(['categoria', 'marca']);
+        $query = Producto::with([
+            'categoria',
+            'marca',
+            'ultimoDetalleCompra',
+            'lotes' => function($q){
+                $q->where('estado', 'ACTIVO');
+            }
+        ]);
 
         // Filtro por estado
         $estado = $request->query('estado');
