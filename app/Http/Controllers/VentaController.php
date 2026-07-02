@@ -506,7 +506,7 @@ if($producto->perecedero == 'NORMAL'){
     return $year . $month . $numero;
     }
     public function ticket($id)
-    {
+{
     // Configuración de la tienda
     $config = DB::table('configuracion')->first();
 
@@ -522,18 +522,17 @@ if($producto->perecedero == 'NORMAL'){
         abort(404);
     }
 
-    // Detalles con nombre del producto y código de lote (si aplica)
+    // Detalles AGRUPADOS por producto (evita líneas duplicadas por lote)
     $detalles = DB::table('detalle_ventas')
                     ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
-                    ->leftJoin('lotes', 'detalle_ventas.lote_id', '=', 'lotes.id')
                     ->where('detalle_ventas.venta_id', $id)
                     ->select(
                         'productos.nombre as producto',
-                        'detalle_ventas.cantidad',
-                        'detalle_ventas.precio_unitario',
-                        'detalle_ventas.subtotal',
-                        'lotes.codigo_lote'
+                        DB::raw('SUM(detalle_ventas.cantidad) as cantidad'),
+                        DB::raw('ROUND(MAX(detalle_ventas.precio_unitario), 2) as precio_unitario'),
+                        DB::raw('ROUND(SUM(detalle_ventas.subtotal), 2) as subtotal')
                     )
+                    ->groupBy('productos.id', 'productos.nombre')
                     ->get();
 
     // Información del crédito (si existe)
@@ -550,5 +549,5 @@ if($producto->perecedero == 'NORMAL'){
     $pdf->setPaper([0, 0, 226.77, 400], 'portrait'); // 80mm ≈ 226.77px
 
     return $pdf->stream("ticket-{$venta->correlativo}.pdf");
-    }
+}
 }

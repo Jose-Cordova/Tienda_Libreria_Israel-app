@@ -39,7 +39,7 @@
 
     @foreach ($detalles as $detalle)
         <div class="producto">
-            <span>{{ $detalle->producto }} {{ $detalle->codigo_lote ? '('. $detalle->codigo_lote .')' : '' }}</span>
+            <span>{{ $detalle->producto }}</span>
             <span style="float:right;">x{{ $detalle->cantidad }}</span>
         </div>
         <div class="producto">
