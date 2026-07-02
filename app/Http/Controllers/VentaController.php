@@ -419,9 +419,79 @@ if($producto->perecedero == 'NORMAL'){
      */
     public function destroy(string $id)
     {
-        //
-    }
+        try {
+        DB::beginTransaction();
 
+        $venta = Venta::with(['detalleVentas.lote', 'credito'])->findOrFail($id);
+
+        if ($venta->estado === 'ANULADA') {
+            return response()->json([
+                'message' => 'La venta ya está anulada.'
+            ], 400);
+        }
+
+        if (!in_array($venta->estado, ['PAGADA', 'CREDITO'])) {
+            return response()->json([
+                'message' => 'Solo se pueden anular ventas con estado PAGADA o CREDITO.'
+            ], 400);
+        }
+
+        if ($venta->credito && $venta->credito->saldo != 0) {
+            return response()->json([
+                'message' => 'No se puede anular la venta porque ya se han registrado abonos al crédito.'
+            ], 400);
+        }
+
+        foreach ($venta->detalleVentas as $detalle) {
+            $producto = $detalle->producto;
+            $cantidad = $detalle->cantidad;
+
+            $producto->increment('stock', $cantidad);
+
+            if ($detalle->lote_id && $detalle->lote) {
+                $lote = $detalle->lote;
+                $lote->cantidad_actual += $cantidad;
+                if ($lote->estado === 'INACTIVO' && $lote->cantidad_actual > 0) {
+                    $lote->estado = 'ACTIVO';
+                    $lote->motivo_inactivo = null; // Limpiar motivo de inactivación
+                }
+                $lote->save();
+            }
+        }
+
+        if ($venta->credito) {
+            $venta->credito->delete();
+        }
+
+        $venta->update(['estado' => 'ANULADA']);
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'Venta anulada correctamente.',
+            'venta' => $venta->fresh([
+                'user',
+                'metodoPago',
+                'detalleVentas.producto',
+                'detalleVentas.lote',
+                'credito'
+            ])
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Venta no encontrada.'
+        ], 404);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Error al anular la venta.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+    }
     private function generarCorrelativo()
 {
     $year = now()->format('Y');
