@@ -41,14 +41,15 @@ Route::apiResource('categorias', CategoriaController::class);
 Route::apiResource('metodos-pagos', MetodoPagoController::class);
 Route::apiResource('clientes-creditos', ClienteCreditoController::class);
 Route::apiResource('marcas', MarcaController::class);
-Route::apiResource('ventas', VentaController::class);
-Route::get('/ventas/{id}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
+
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('proveedores', ProveedorController::class);
     Route::apiResource('compras', CompraController::class);
     Route::post('compras/{id}/anular', [CompraController::class, 'anular']);
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::apiResource('ventas', VentaController::class);
+    Route::get('/ventas/{id}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
 });
 Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaStockMinimo']);
 Route::patch('productos/{id}/cambiar-estado', [ProductoController::class, 'cambiarEstado']);

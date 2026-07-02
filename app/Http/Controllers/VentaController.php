@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Exception;
 use Illuminate\Validation\ValidationException;
+use App\Http\Requests\StoreVentaRequest;
 
 class VentaController extends Controller
 {
@@ -106,30 +107,9 @@ class VentaController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreVentaRequest $request)
     {
-        $data = $request->validate([
-
-            //validaciones de venta
-            'user_id' => 'required|exists:users,id',
-            'metodo_pago_id'  => $request->estado === 'CREDITO'
-                            ? 'nullable|exists:metodos_pagos,id'
-                            : 'required|exists:metodos_pagos,id',
-            'tipo_cliente' => 'required|in:DETALLES,MAYORISTA',
-            'estado' => 'required|in:PAGADA,CREDITO',
-
-            //validaciones del detalle de venta
-            'detalle' => 'required|array|min:1',
-            'detalle.*.producto_id' => 'required|exists:productos,id',
-            'detalle.*.cantidad' => 'required|integer|min:1',
-
-            //validaciones adicionales si la venta es a CREDITO
-            'cliente_credito_id' => 'nullable|exists:clientes_creditos,id',
-
-            'nombre' => 'nullable|string|max:50',
-            'dui' => 'nullable|string|max:10|unique:clientes_creditos,dui',
-            'telefono' => 'nullable|string|max:20|unique:clientes_creditos,telefono',
-        ]);
+        $data = $request->validated();
     try{
         //iniciamos transaccion
         DB::beginTransaction();
