@@ -493,7 +493,7 @@ if($producto->perecedero == 'NORMAL'){
     }
     }
     private function generarCorrelativo()
-{
+    {
     $year = now()->format('Y');
     $month = now()->format('m');
 
@@ -504,5 +504,51 @@ if($producto->perecedero == 'NORMAL'){
     $numero = str_pad($ultimo + 1, 4, '0', STR_PAD_LEFT);
 
     return $year . $month . $numero;
-}
+    }
+    public function ticket($id)
+    {
+    // Configuración de la tienda
+    $config = DB::table('configuracion')->first();
+
+    // Venta (con método de pago y usuario)
+    $venta = DB::table('ventas')
+                ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+                ->join('users', 'ventas.user_id', '=', 'users.id')
+                ->where('ventas.id', $id)
+                ->select('ventas.*', 'metodos_pagos.nombre as metodo_pago', 'users.name as vendedor')
+                ->first();
+
+    if (!$venta) {
+        abort(404);
+    }
+
+    // Detalles con nombre del producto y código de lote (si aplica)
+    $detalles = DB::table('detalle_ventas')
+                    ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
+                    ->leftJoin('lotes', 'detalle_ventas.lote_id', '=', 'lotes.id')
+                    ->where('detalle_ventas.venta_id', $id)
+                    ->select(
+                        'productos.nombre as producto',
+                        'detalle_ventas.cantidad',
+                        'detalle_ventas.precio_unitario',
+                        'detalle_ventas.subtotal',
+                        'lotes.codigo_lote'
+                    )
+                    ->get();
+
+    // Información del crédito (si existe)
+    $credito = DB::table('creditos')
+                    ->join('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
+                    ->where('creditos.venta_id', $id)
+                    ->select('clientes_creditos.nombre as cliente', 'creditos.monto_adeudado')
+                    ->first();
+
+    // Generar PDF
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tickets.venta', compact('config', 'venta', 'detalles', 'credito'));
+
+    // Configurar tamaño del papel (80mm de ancho, alto automático)
+    $pdf->setPaper([0, 0, 226.77, 400], 'portrait'); // 80mm ≈ 226.77px
+
+    return $pdf->stream("ticket-{$venta->correlativo}.pdf");
+    }
 }
