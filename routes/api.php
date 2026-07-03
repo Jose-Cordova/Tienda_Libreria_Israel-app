@@ -18,7 +18,9 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\ReporteHistorialController;
 use App\Http\Controllers\ReporteComprasController;
-use App\Http\Controllers\ReporteCreditoController;use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReporteCreditoController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CreditoController;
 
 
 Route::get('/user', function (Request $request) {
@@ -41,7 +43,11 @@ Route::apiResource('categorias', CategoriaController::class);
 Route::apiResource('metodos-pagos', MetodoPagoController::class);
 Route::apiResource('clientes-creditos', ClienteCreditoController::class);
 Route::apiResource('marcas', MarcaController::class);
-
+//Credito
+Route::apiResource('creditos', CreditoController::class)->only(['index', 'show']);
+Route::post('creditos/{id}/abonos', [CreditoController::class, 'storeAbono']);
+Route::patch('abonos/{id}/anular', [CreditoController::class, 'anularAbono']);
+Route::get('abonos/{id}/ticket', [CreditoController::class, 'ticketAbono']);
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('proveedores', ProveedorController::class);
