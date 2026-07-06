@@ -17,26 +17,64 @@ class CreditoController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
-        $clientes = ClienteCredito::with(['creditos' => function ($query) {
-            $query->select('id', 'cliente_credito_id', 'monto_adeudado', 'saldo');
-        }])
-        ->withCount('creditos')
-        ->withSum('creditos', 'monto_adeudado')
-        ->withSum('creditos', 'saldo')
-        ->paginate(15);
 
+    public function index(Request $request)
+{
+    // Validar los parámetros opcionales
+    $request->validate([
+        'estado'   => 'nullable|in:PENDIENTE,PAGADO',
+        'search'   => 'nullable|string|max:100',
+        'per_page' => 'nullable|integer|min:1|max:100',
+    ]);
+
+    $estado  = $request->query('estado');
+    $search  = $request->query('search');
+    $perPage = $request->query('per_page', 10); // valor por defecto 2
+
+    // Consulta base con agregaciones (sin filtros de estado, solo búsqueda)
+    $query = ClienteCredito::select(
+            'clientes_creditos.id',
+            'clientes_creditos.nombre',
+            'clientes_creditos.dui'
+        )
+        ->selectRaw('COALESCE(SUM(creditos.monto_adeudado), 0)::numeric(12,2) as total_deuda')
+        ->selectRaw('COALESCE(SUM(creditos.saldo), 0)::numeric(12,2) as total_abonado')
+        ->selectRaw("COUNT(creditos.id) FILTER (WHERE creditos.estado = 'PENDIENTE') as creditos_activos")
+        ->leftJoin('creditos', 'clientes_creditos.id', '=', 'creditos.cliente_credito_id')
+        ->groupBy('clientes_creditos.id');
+
+    // Filtro por búsqueda (nombre o DUI)
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('clientes_creditos.nombre', 'ilike', "%{$search}%")
+            ->orWhere('clientes_creditos.dui', 'ilike', "%{$search}%");
+        });
+    }
+
+    // Aplicar filtro de estado si se solicita
+    if ($estado === 'PENDIENTE') {
+        // Clientes que deben algo (suma de saldos < suma de deudas)
+        $query->havingRaw('SUM(creditos.saldo) < SUM(creditos.monto_adeudado)');
+    } elseif ($estado === 'PAGADO') {
+        // Clientes que ya pagaron todo Y TIENEN AL MENOS UN CRÉDITO
+        $query->havingRaw('SUM(creditos.saldo) >= SUM(creditos.monto_adeudado)');
+        $query->havingRaw('COUNT(creditos.id) > 0');
+    }
+    // Si $estado es null (Todos los créditos), no se aplica having
+
+    $clientes = $query->orderBy('clientes_creditos.nombre')->paginate($perPage);
+
+    // Formatear la respuesta
     $clientes->getCollection()->transform(function ($cliente) {
-        $totalDeuda   = (float) $cliente->creditos_sum_monto_adeudado;
-        $totalAbonado = (float) $cliente->creditos_sum_saldo;
+        $totalDeuda   = (float) $cliente->total_deuda;
+        $totalAbonado = (float) $cliente->total_abonado;
         $estado       = ($totalAbonado >= $totalDeuda) ? 'SIN DEUDA' : 'CON DEUDA';
 
         return [
             'id'               => $cliente->id,
             'nombre'           => $cliente->nombre,
             'dui'              => $cliente->dui,
-            'creditos_activos' => $cliente->creditos_count,
+            'creditos_activos' => (int) $cliente->creditos_activos,
             'total_deuda'      => $totalDeuda,
             'total_abonado'    => $totalAbonado,
             'estado'           => $estado,
@@ -44,7 +82,11 @@ class CreditoController extends Controller
     });
 
     return response()->json($clientes);
-    }
+}
+
+    /**
+     * MÉTODO PARA CREAR LOS REGISTROS DE LOS ABONOS
+     */
 
     public function storeAbono(Request $request, $creditoId)
     {
@@ -160,6 +202,62 @@ class CreditoController extends Controller
      * ANULAR ABONO PARA LA TRAZABILIDAD DEL ABONO
      */
 
+    public function anularAbono($abonoId)
+{
+    try {
+        DB::beginTransaction();
+
+        $abono = Abono::findOrFail($abonoId);
+
+        if ($abono->estado === 'ANULADO') {
+            return response()->json([
+                'message' => 'El abono ya está anulado.'
+            ], 400);
+        }
+
+        $credito = Credito::findOrFail($abono->credito_id);
+
+        // Revertir el saldo del crédito
+        $credito->saldo -= $abono->monto;
+
+        // Si el crédito estaba PAGADO y ahora el saldo es menor, volver a PENDIENTE
+        if ($credito->estado === 'PAGADO' && $credito->saldo < $credito->monto_adeudado) {
+            $credito->estado = 'PENDIENTE';
+            $credito->fecha_cancelada = null;
+        }
+
+        $credito->save();
+
+        // Anular el abono
+        $abono->estado = 'ANULADO';
+        $abono->save();
+
+        DB::commit();
+
+        $credito->load('abonos.metodoPago');
+
+        return response()->json([
+            'message' => 'Abono anulado correctamente.',
+            'credito' => $credito
+        ]);
+
+    } catch (ModelNotFoundException $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Abono no encontrado.'
+        ], 404);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Error al anular el abono.',
+            'error'   => $e->getMessage()
+        ], 500);
+    }
+}
+
+    /**
+     * TICKET DEL ABONO
+     */
     public function ticketAbono($abonoId)
 {
     // Datos de la tienda
