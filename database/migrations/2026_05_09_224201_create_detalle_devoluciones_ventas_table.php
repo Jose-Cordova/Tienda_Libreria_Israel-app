@@ -16,7 +16,7 @@ return new class extends Migration
             $table->integer('cantidad');
             $table->decimal('precio_unitario', 12,2);
             $table->decimal('subtotal', 12,2);
-            $table->enum('condicion', ['DAÑADO', 'PERFECTO']);
+            $table->enum('condicion', ['DANIADO', 'PERFECTO']);
             $table->unsignedBigInteger('devolucion_venta_id');
             $table->foreign('devolucion_venta_id')->references('id')->on('devoluciones_ventas');
             $table->unsignedBigInteger('producto_id');

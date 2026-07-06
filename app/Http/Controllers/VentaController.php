@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Exception;
 use Illuminate\Validation\ValidationException;
+use App\Http\Requests\StoreVentaRequest;
 
 class VentaController extends Controller
 {
@@ -106,30 +107,9 @@ class VentaController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreVentaRequest $request)
     {
-        $data = $request->validate([
-
-            //validaciones de venta
-            'user_id' => 'required|exists:users,id',
-            'metodo_pago_id'  => $request->estado === 'CREDITO'
-                            ? 'nullable|exists:metodos_pagos,id'
-                            : 'required|exists:metodos_pagos,id',
-            'tipo_cliente' => 'required|in:DETALLES,MAYORISTA',
-            'estado' => 'required|in:PAGADA,CREDITO',
-
-            //validaciones del detalle de venta
-            'detalle' => 'required|array|min:1',
-            'detalle.*.producto_id' => 'required|exists:productos,id',
-            'detalle.*.cantidad' => 'required|integer|min:1',
-
-            //validaciones adicionales si la venta es a CREDITO
-            'cliente_credito_id' => 'nullable|exists:clientes_creditos,id',
-
-            'nombre' => 'nullable|string|max:50',
-            'dui' => 'nullable|string|max:10|unique:clientes_creditos,dui',
-            'telefono' => 'nullable|string|max:20|unique:clientes_creditos,telefono',
-        ]);
+        $data = $request->validated();
     try{
         //iniciamos transaccion
         DB::beginTransaction();
@@ -419,11 +399,81 @@ if($producto->perecedero == 'NORMAL'){
      */
     public function destroy(string $id)
     {
-        //
-    }
+        try {
+        DB::beginTransaction();
 
+        $venta = Venta::with(['detalleVentas.lote', 'credito'])->findOrFail($id);
+
+        if ($venta->estado === 'ANULADA') {
+            return response()->json([
+                'message' => 'La venta ya está anulada.'
+            ], 400);
+        }
+
+        if (!in_array($venta->estado, ['PAGADA', 'CREDITO'])) {
+            return response()->json([
+                'message' => 'Solo se pueden anular ventas con estado PAGADA o CREDITO.'
+            ], 400);
+        }
+
+        if ($venta->credito && $venta->credito->saldo != 0) {
+            return response()->json([
+                'message' => 'No se puede anular la venta porque ya se han registrado abonos al crédito.'
+            ], 400);
+        }
+
+        foreach ($venta->detalleVentas as $detalle) {
+            $producto = $detalle->producto;
+            $cantidad = $detalle->cantidad;
+
+            $producto->increment('stock', $cantidad);
+
+            if ($detalle->lote_id && $detalle->lote) {
+                $lote = $detalle->lote;
+                $lote->cantidad_actual += $cantidad;
+                if ($lote->estado === 'INACTIVO' && $lote->cantidad_actual > 0) {
+                    $lote->estado = 'ACTIVO';
+                    $lote->motivo_inactivo = null; // Limpiar motivo de inactivación
+                }
+                $lote->save();
+            }
+        }
+
+        if ($venta->credito) {
+            $venta->credito->delete();
+        }
+
+        $venta->update(['estado' => 'ANULADA']);
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'Venta anulada correctamente.',
+            'venta' => $venta->fresh([
+                'user',
+                'metodoPago',
+                'detalleVentas.producto',
+                'detalleVentas.lote',
+                'credito'
+            ])
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Venta no encontrada.'
+        ], 404);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'message' => 'Error al anular la venta.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+    }
     private function generarCorrelativo()
-{
+    {
     $year = now()->format('Y');
     $month = now()->format('m');
 
@@ -434,5 +484,50 @@ if($producto->perecedero == 'NORMAL'){
     $numero = str_pad($ultimo + 1, 4, '0', STR_PAD_LEFT);
 
     return $year . $month . $numero;
+    }
+    public function ticket($id)
+{
+    // Configuración de la tienda
+    $config = DB::table('configuracion')->first();
+
+    // Venta (con método de pago y usuario)
+    $venta = DB::table('ventas')
+                ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+                ->join('users', 'ventas.user_id', '=', 'users.id')
+                ->where('ventas.id', $id)
+                ->select('ventas.*', 'metodos_pagos.nombre as metodo_pago', 'users.name as vendedor')
+                ->first();
+
+    if (!$venta) {
+        abort(404);
+    }
+
+    // Detalles AGRUPADOS por producto (evita líneas duplicadas por lote)
+    $detalles = DB::table('detalle_ventas')
+                    ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
+                    ->where('detalle_ventas.venta_id', $id)
+                    ->select(
+                        'productos.nombre as producto',
+                        DB::raw('SUM(detalle_ventas.cantidad) as cantidad'),
+                        DB::raw('ROUND(MAX(detalle_ventas.precio_unitario), 2) as precio_unitario'),
+                        DB::raw('ROUND(SUM(detalle_ventas.subtotal), 2) as subtotal')
+                    )
+                    ->groupBy('productos.id', 'productos.nombre')
+                    ->get();
+
+    // Información del crédito (si existe)
+    $credito = DB::table('creditos')
+                    ->join('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
+                    ->where('creditos.venta_id', $id)
+                    ->select('clientes_creditos.nombre as cliente', 'creditos.monto_adeudado')
+                    ->first();
+
+    // Generar PDF
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tickets.venta', compact('config', 'venta', 'detalles', 'credito'));
+
+    // Configurar tamaño del papel (80mm de ancho, alto automático)
+    $pdf->setPaper([0, 0, 226.77, 400], 'portrait'); // 80mm ≈ 226.77px
+
+    return $pdf->stream("ticket-{$venta->correlativo}.pdf");
 }
 }

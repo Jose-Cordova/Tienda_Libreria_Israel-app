@@ -18,7 +18,9 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\ReporteHistorialController;
 use App\Http\Controllers\ReporteComprasController;
-use App\Http\Controllers\ReporteCreditoController;use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReporteCreditoController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CreditoController;
 
 
 Route::get('/user', function (Request $request) {
@@ -41,14 +43,19 @@ Route::apiResource('categorias', CategoriaController::class);
 Route::apiResource('metodos-pagos', MetodoPagoController::class);
 Route::apiResource('clientes-creditos', ClienteCreditoController::class);
 Route::apiResource('marcas', MarcaController::class);
-Route::apiResource('unidades-medidas', UnidadMedidaController::class);
-Route::apiResource('ventas', VentaController::class);
+//Credito
+Route::apiResource('creditos', CreditoController::class)->only(['index', 'show']);
+Route::post('creditos/{id}/abonos', [CreditoController::class, 'storeAbono']);
+Route::patch('abonos/{id}/anular', [CreditoController::class, 'anularAbono']);
+Route::get('abonos/{id}/ticket', [CreditoController::class, 'ticketAbono']);
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('proveedores', ProveedorController::class);
     Route::apiResource('compras', CompraController::class);
     Route::post('compras/{id}/anular', [CompraController::class, 'anular']);
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::apiResource('ventas', VentaController::class);
+    Route::get('/ventas/{id}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
 });
 Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaStockMinimo']);
 Route::patch('productos/{id}/cambiar-estado', [ProductoController::class, 'cambiarEstado']);

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 use App\Models\User;
+use App\Models\Configuracion;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,7 +16,8 @@ class DatabaseSeeder extends Seeder
         // 1. Ejecutar seeders externos primero (ej. Roles y Permisos)
         $this->call([
             RoleSeeder::class,
-            UserSeeder::class
+            UserSeeder::class,
+            ConfiguracionSeeder::class,
             // OtrosSeeders::class,
         ]);
 
