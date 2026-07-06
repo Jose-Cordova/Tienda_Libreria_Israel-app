@@ -13,7 +13,9 @@ class DetalleDevolucionVenta extends Model
         'subtotal',
         'condicion',
         'devolucion_venta_id',
-        'producto_id'
+        'producto_id',
+        'detalle_venta_id',
+        'producto_daniado_id'
     ];
     protected $casts = [
         'precio_unitario' => 'decimal:2',
@@ -27,5 +29,14 @@ class DetalleDevolucionVenta extends Model
     public function producto()
     {
         return $this->belongsTo(Producto::class);
+    }
+    public function detalleVenta()
+    {
+        return $this->belongsTo(DetalleVenta::class, 'detalle_venta_id');
+    }
+    
+    public function productoDaniado()
+    {
+        return $this->belongsTo(ProductoDaniado::class, 'producto_daniado_id');
     }
 }

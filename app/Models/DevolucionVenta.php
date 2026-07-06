@@ -10,10 +10,12 @@ class DevolucionVenta extends Model
     protected $fillable = [
         'fecha',
         'motivo',
+        'total',
         'venta_id'
     ];
     protected $casts = [
-        'fecha' => 'date'
+        'fecha' => 'date',
+        'total' => 'decimal:2'
     ];
 
     public function detalleDevolucionVentas()
