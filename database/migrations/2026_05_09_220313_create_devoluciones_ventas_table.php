@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->date('fecha');
             $table->string('motivo', 255);
+            $table->decimal('total', 12,2);
             $table->unsignedBigInteger('venta_id');
             $table->foreign('venta_id')->references('id')->on('ventas');
             $table->timestamps();

@@ -17,10 +17,10 @@ return new class extends Migration
             $table->timestamp('fecha');
             $table->decimal('total', 12,2);
             $table->enum('tipo_cliente', ['DETALLES', 'MAYORISTA'])->default('DETALLES');
-            $table->enum('estado', ['PAGADA', 'CREDITO', 'ANULADA'])->default('PAGADA');
+            $table->enum('estado', ['PAGADA', 'CREDITO', 'ANULADA','DEVOLUCION'])->default('PAGADA');
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users');
-            $table->unsignedBigInteger('metodo_pago_id')->nullable(); 
+            $table->unsignedBigInteger('metodo_pago_id')->nullable();
             $table->foreign('metodo_pago_id')->references('id')->on('metodos_pagos')->nullOnDelete;
             $table->timestamps();
         });

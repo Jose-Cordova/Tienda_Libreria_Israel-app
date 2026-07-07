@@ -13,7 +13,7 @@ class Producto extends Model
         'costo_promedio',
         'stock',
         'stock_minimo',
-        'sesion',
+        'seccion',
         'perecedero',
         'estado',
         'marca_id',

@@ -21,6 +21,11 @@ return new class extends Migration
             $table->foreign('devolucion_venta_id')->references('id')->on('devoluciones_ventas');
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
+            //Nuevas llaves foraneas
+            $table->unsignedBigInteger('detalle_venta_id')->nullable();
+            $table->foreign('detalle_venta_id')->references('id')->on('detalle_ventas')->nullOnDelete();
+            $table->unsignedBigInteger('producto_daniado_id')->nullable();
+            $table->foreign('producto_daniado_id')->references('id')->on('productos_daniados')->nullOnDelete();
             $table->timestamps();
         });
     }
