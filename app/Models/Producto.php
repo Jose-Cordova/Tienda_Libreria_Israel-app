@@ -10,6 +10,7 @@ class Producto extends Model
         'nombre',
         'precio_detalle',
         'precio_mayor',
+        'costo_promedio',
         'stock',
         'stock_minimo',
         'sesion',
@@ -20,7 +21,8 @@ class Producto extends Model
     ];
     protected $casts = [
         'precio_detalle' => 'decimal:2',
-        'precio_mayor' => 'decimal:2'
+        'precio_mayor' => 'decimal:2',
+        'costo_promedio' => 'decimal:2'
     ];
 
     public function detalleVentas()

@@ -98,6 +98,7 @@ class CompraController extends Controller
                         'nombre' => $detalle['nombre'],
                         'precio_detalle' => 0,
                         'precio_mayor' => 0,
+                        'costo_promedio' => 0,
                         'stock' => 0,
                         'stock_minimo' => $detalle['stock_minimo'],
                         'perecedero' => $detalle['perecedero'],
@@ -144,15 +145,27 @@ class CompraController extends Controller
                     $cantidadTotal = $detalle['cantidad'] * $factorConversion;
                 }
 
+                //Obtenemos los datos antes del incremento del stock
+                $stockAnterior = $producto->stock;
+                $cppAnterior = $producto->costo_promedio;
                 //Calculamos los precios de venta al detalle y al mayor y actualizamos
                 $factorConversion = $detalle['factor_conversion'] ?? 1;
                 $precioUnitarioBase = $detalle['precio_unitario'] / $factorConversion;
-                $precioDetalle = $precioUnitarioBase * (1 + $detalle['margen_detalle'] / 100);
-                $precioMayor = $precioUnitarioBase * (1 + $detalle['margen_mayor'] / 100);
+                //Aplicamos formula del CPP
+                $totalUnidadesNuevas = $stockAnterior + $cantidadTotal;
+                if($totalUnidadesNuevas > 0){
+                    $nuevoCpp = (($stockAnterior * $cppAnterior) + ($cantidadTotal * $precioUnitarioBase)) / $totalUnidadesNuevas;
+                }else{
+                    $nuevoCpp = $precioUnitarioBase;
+                }
+                //Calcular precios de ventas
+                $precioDetalle = $nuevoCpp * (1 + $detalle['margen_detalle'] / 100);
+                $precioMayor = $nuevoCpp * (1 + $detalle['margen_mayor'] / 100);
 
                 $producto->update([
                     'precio_detalle' => $precioDetalle,
-                    'precio_mayor' => $precioMayor
+                    'precio_mayor' => $precioMayor,
+                    'costo_promedio' => $nuevoCpp
                 ]);
 
                 //Calculamos el subtotal y acumulamos el total de la compra
@@ -293,7 +306,27 @@ class CompraController extends Controller
 
                     //Revertimos el stock
                     $unidades = $detalle->cantidad * $detalle->factor_conversion;
+                    //Calcular CPP inverso antes de anular
+                    $stockActual = $producto->stock;
+                    $stockOriginal = $stockActual - $unidades;
+                    $precioUnitarioBase = $detalle->precio_unitario / $detalle->factor_conversion;
+
+                    if($stockOriginal > 0){
+                        $nuevoCpp = (($stockActual * $producto->costo_promedio) - ($unidades * $precioUnitarioBase)) / $stockOriginal;
+                    }else{
+                        $nuevoCpp = 0;
+                    }
+
+                    //Revertimos los precios de ventas y margenes de detalle
+                    $precioDetalle = $nuevoCpp * (1 + $detalle->margen_detalle / 100);
+                    $precioMayor = $nuevoCpp * (1 + $detalle->margen_mayor / 100);
+
                     $producto->decrement('stock', $unidades);
+                    $producto->update([
+                        'costo_promedio' => max(0, $nuevoCpp),
+                        'precio_detalle' => max(0, $precioDetalle),
+                        'precio_mayor' => max(0, $precioMayor)
+                    ]);
 
                     if($producto->perecedero === 'PERECEDERO'){
                         //Actualizamos solo los lotes que pertenecen a esa compra
