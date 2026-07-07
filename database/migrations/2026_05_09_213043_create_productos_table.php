@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nombre', 100);
             $table->decimal('precio_detalle', 12,2);
             $table->decimal('precio_mayor', 12,2);
+            $table->decimal('costo_promedio', 12,2);
             $table->integer('stock');
             $table->integer('stock_minimo');
             $table->enum('sesion', ['DESPENSA', 'LIBRERIA', 'MEDICAMENTO']);
