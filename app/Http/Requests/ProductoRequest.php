@@ -6,7 +6,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Models\Producto;
-
+use App\Models\Categoria;
+use App\Models\Marca;
 
 class ProductoRequest extends FormRequest
 {
@@ -24,9 +25,11 @@ class ProductoRequest extends FormRequest
         'precio_mayor'     => 'required|numeric|min:0.01',
         'stock_minimo'     => 'required|integer|min:1',
         'perecedero'       => 'required|in:NORMAL,PERECEDERO',
-        'unidad_medida_id' => 'required|exists:unidades_medidas,id',
-        'marca_id'         => 'required|exists:marcas,id',
-        'categoria_id'     => 'required|exists:categorias,id',
+        'marca_id'         => ['required', 'exists:marcas,id'],
+    'categoria_id'     => ['required', 'exists:categorias,id'],
+        // para seccion: en creación es obligatorio, en update es opcional
+        'seccion'           => $isUpdate ? 'sometimes|in:TIENDA,LIBRERIA,MEDICAMENTO' : 'required|in:TIENDA,LIBRERIA,MEDICAMENTO',
+
     ];
 
     // Solo para creación (store)
@@ -35,8 +38,42 @@ class ProductoRequest extends FormRequest
         $rules['codigo_lote'] = 'required_if:perecedero,PERECEDERO|string|max:50|unique:lotes,codigo_lote';
         $rules['fecha_vencimiento'] = 'required_if:perecedero,PERECEDERO|date|after:today';
     }
+    //Validacion para Categioria y Marca debe de coicidir con la sesión
+     $rules['categoria_id'][] = function ($attribute, $value, $fail) use ($id) {
+            $this->validarPertenencia($attribute, $value, $fail, $id);
+        };
+        $rules['marca_id'][] = function ($attribute, $value, $fail) use ($id) {
+            $this->validarPertenencia($attribute, $value, $fail, $id);
+        };
     return $rules;
 }
+    //VALIDAR QUE LA CATEGORIA Y MARCA PERTENEZCAN A LA SESION DEL PRODUCTO
+    private function validarPertenencia($attribute, $value, $fail, $id)
+    {
+        // Determinar qué sesión debe tener el producto
+        $sesion = $this->input('seccion');
+        if ($id && !$this->has('seccion')) {
+            // En actualización sin enviar seccion, usar la seccion actual del producto
+            $producto = Producto::find($id);
+            if ($producto) {
+                $sesion = $producto->seccion;
+            }
+        }
+        if (!$sesion) {
+            return;
+        }
+
+        // Buscar el modelo (categoría o marca) con el ID enviado
+        $modelo = $attribute === 'categoria_id' ? Categoria::find($value) : Marca::find($value);
+        if (!$modelo) return;
+
+        // Comparar secciones
+        if ($modelo->seccion !== $sesion) {
+            $nombreModelo = $attribute === 'categoria_id' ? 'categoría' : 'marca';
+            $fail("La {$nombreModelo} seleccionada no pertenece a la sección {$sesion}.");
+        }
+    }
+
     public function messages(): array
     {
         return [
@@ -55,8 +92,6 @@ class ProductoRequest extends FormRequest
             'stock_minimo.min'        => 'El stock mínimo debe ser al menos 1.',
             'perecedero.required'     => 'El tipo de producto es obligatorio.',
             'perecedero.in'           => 'El tipo debe ser NORMAL o PERECEDERO.',
-            'unidad_medida_id.required' => 'La unidad de medida es obligatoria.',
-            'unidad_medida_id.exists'   => 'La unidad de medida no existe.',
             'marca_id.required'       => 'La marca es obligatoria.',
             'marca_id.exists'         => 'La marca no existe.',
             'categoria_id.required'   => 'La categoría es obligatoria.',
@@ -69,6 +104,8 @@ class ProductoRequest extends FormRequest
             'codigo_lote.max'         => 'El código de lote no puede exceder 50 caracteres.',
             'fecha_vencimiento.date'  => 'La fecha de vencimiento no es válida.',
             'fecha_vencimiento.after' => 'La fecha de vencimiento debe ser mayor a hoy.',
+            'seccion.required' => 'La sección del producto es obligatoria.',
+            'seccion.in'       => 'La sección debe ser TIENDA, LIBRERIA o MEDICAMENTO.',
         ];
     }
     protected function failedValidation(Validator $validator)
@@ -79,4 +116,3 @@ class ProductoRequest extends FormRequest
         ], 422));
     }
 }
-//XD

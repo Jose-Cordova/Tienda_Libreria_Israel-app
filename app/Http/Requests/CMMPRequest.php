@@ -38,6 +38,10 @@ class CMMPRequest extends FormRequest
                     'min:2',
                     'max:50',
                     Rule::unique($tabla, 'nombre')->ignore($id)
+            ],
+            'seccion' => [
+                'required',
+                'in:TIENDA,LIBRERIA,MEDICAMENTO'
             ]
         ];
     }
@@ -49,6 +53,8 @@ class CMMPRequest extends FormRequest
             'nombre.required' => 'El nombre es obligatorio.',
             'nombre.min' => 'El nombre debe tener al menos 2 caracteres.',
             'nombre.unique' => "Ya existe una {$tipo} con este nombre.",
+            'seccion.required' => 'La sección es obligatoria.',
+            'seccion.in' => 'La sección debe de ser TIENDA, LIBRERIA o MEDICAMENTO.'
         ];
     }
     //Si la validacion falla se ejecuta la funcion

@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteCreditoController;
 use App\Http\Controllers\MarcaController;
-use App\Http\Controllers\UnidadMedidaController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\Auth\AuthController;
@@ -48,6 +47,7 @@ Route::apiResource('creditos', CreditoController::class)->only(['index', 'show']
 Route::post('creditos/{id}/abonos', [CreditoController::class, 'storeAbono']);
 Route::patch('abonos/{id}/anular', [CreditoController::class, 'anularAbono']);
 Route::get('abonos/{id}/ticket', [CreditoController::class, 'ticketAbono']);
+Route::apiResource('ventas', VentaController::class);
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('proveedores', ProveedorController::class);

@@ -23,6 +23,10 @@ class ProductoController extends Controller
                 $q->where('estado', 'ACTIVO');
             }
         ]);
+        //Filtro por sección
+        if ($request->filled('seccion')) {
+            $query->where('seccion', $request->seccion);
+        }
 
         // Filtro por estado
         $estado = $request->query('estado');
@@ -77,9 +81,9 @@ class ProductoController extends Controller
                 'stock_minimo'     => $request->stock_minimo,
                 'perecedero'       => $request->perecedero,
                 'estado'           => 'ACTIVO',
-                'unidad_medida_id' => $request->unidad_medida_id,
                 'marca_id'         => $request->marca_id,
-                'categoria_id'     => $request->categoria_id
+                'categoria_id'     => $request->categoria_id,
+                'seccion'           => $request->seccion
             ]);
 
             if ($request->perecedero === 'PERECEDERO') {
@@ -128,19 +132,34 @@ class ProductoController extends Controller
         }
     }
 
-    public function update(ProductoRequest $request, string $id)
+   public function update(ProductoRequest $request, string $id)
 {
     try {
         $producto = Producto::findOrFail($id);
-        $producto->update([
+
+        // Construir el array base con los campos que siempre se actualizan
+        $data = [
             'nombre'           => $request->nombre,
             'precio_detalle'   => $request->precio_detalle,
             'precio_mayor'     => $request->precio_mayor,
             'stock_minimo'     => $request->stock_minimo,
-            'unidad_medida_id' => $request->unidad_medida_id,
             'marca_id'         => $request->marca_id,
-            'categoria_id'     => $request->categoria_id
-        ]);
+            'categoria_id'     => $request->categoria_id,
+        ];
+
+        // Si se envía 'seccion', aplicar regla según tipo de producto
+        if ($request->has('seccion')) {
+            // Si es perecedero, solo permitir cambio si stock es 0
+            if ($producto->perecedero === 'PERECEDERO' && $producto->stock > 0) {
+                return response()->json([
+                    'message' => 'No se puede cambiar la sección porque el producto es perecedero y aún tiene stock disponible (stock actual: ' . $producto->stock . ').'
+                ], 422);
+            }
+            // Si es NORMAL o PERECEDERO con stock 0, agregar seccion al array
+            $data['seccion'] = $request->seccion;
+        }
+
+        $producto->update($data);
 
         return response()->json([
             'message'  => 'Producto actualizado correctamente.',
@@ -151,7 +170,8 @@ class ProductoController extends Controller
         return response()->json(['message' => 'Producto no encontrado.'], 404);
     } catch (\Exception $e) {
         return response()->json([
-            'message' => 'Error interno del servidor.'
+            'message' => 'Error interno del servidor.',
+            'error'   => $e->getMessage()
         ], 500);
     }
 }
