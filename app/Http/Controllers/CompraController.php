@@ -102,7 +102,7 @@ class CompraController extends Controller
                         'stock' => 0,
                         'stock_minimo' => $detalle['stock_minimo'],
                         'perecedero' => $detalle['perecedero'],
-                        'sesion' => $detalle['sesion'],
+                        'seccion' => $detalle['seccion'],
                         'estado' => 'ACTIVO',
                         'marca_id' => $detalle['marca_id'],
                         'categoria_id' => $detalle['categoria_id']

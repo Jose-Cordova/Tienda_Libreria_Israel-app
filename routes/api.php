@@ -47,7 +47,6 @@ Route::apiResource('creditos', CreditoController::class)->only(['index', 'show']
 Route::post('creditos/{id}/abonos', [CreditoController::class, 'storeAbono']);
 Route::patch('abonos/{id}/anular', [CreditoController::class, 'anularAbono']);
 Route::get('abonos/{id}/ticket', [CreditoController::class, 'ticketAbono']);
-Route::apiResource('ventas', VentaController::class);
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('proveedores', ProveedorController::class);
