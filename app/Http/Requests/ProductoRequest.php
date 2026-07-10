@@ -27,8 +27,8 @@ class ProductoRequest extends FormRequest
         'perecedero'       => 'required|in:NORMAL,PERECEDERO',
         'marca_id'         => ['required', 'exists:marcas,id'],
     'categoria_id'     => ['required', 'exists:categorias,id'],
-        // para sesion: en creación es obligatorio, en update es opcional
-        'sesion'           => $isUpdate ? 'sometimes|in:DESPENSA,LIBRERIA,MEDICAMENTO' : 'required|in:DESPENSA,LIBRERIA,MEDICAMENTO',
+        // para seccion: en creación es obligatorio, en update es opcional
+        'seccion'           => $isUpdate ? 'sometimes|in:TIENDA,LIBRERIA,MEDICAMENTO' : 'required|in:TIENDA,LIBRERIA,MEDICAMENTO',
 
     ];
 
@@ -51,12 +51,12 @@ class ProductoRequest extends FormRequest
     private function validarPertenencia($attribute, $value, $fail, $id)
     {
         // Determinar qué sesión debe tener el producto
-        $sesion = $this->input('sesion');
-        if ($id && !$this->has('sesion')) {
-            // En actualización sin enviar sesion, usar la sesión actual del producto
+        $sesion = $this->input('seccion');
+        if ($id && !$this->has('seccion')) {
+            // En actualización sin enviar seccion, usar la seccion actual del producto
             $producto = Producto::find($id);
             if ($producto) {
-                $sesion = $producto->sesion;
+                $sesion = $producto->seccion;
             }
         }
         if (!$sesion) {
@@ -67,8 +67,8 @@ class ProductoRequest extends FormRequest
         $modelo = $attribute === 'categoria_id' ? Categoria::find($value) : Marca::find($value);
         if (!$modelo) return;
 
-        // Comparar sesiones
-        if ($modelo->sesion !== $sesion) {
+        // Comparar secciones
+        if ($modelo->seccion !== $sesion) {
             $nombreModelo = $attribute === 'categoria_id' ? 'categoría' : 'marca';
             $fail("La {$nombreModelo} seleccionada no pertenece a la sección {$sesion}.");
         }
@@ -104,8 +104,8 @@ class ProductoRequest extends FormRequest
             'codigo_lote.max'         => 'El código de lote no puede exceder 50 caracteres.',
             'fecha_vencimiento.date'  => 'La fecha de vencimiento no es válida.',
             'fecha_vencimiento.after' => 'La fecha de vencimiento debe ser mayor a hoy.',
-            'sesion.required' => 'La sección del producto es obligatoria.',
-            'sesion.in'       => 'La sección debe ser DESPENSA, LIBRERIA o MEDICAMENTO.',
+            'seccion.required' => 'La sección del producto es obligatoria.',
+            'seccion.in'       => 'La sección debe ser TIENDA, LIBRERIA o MEDICAMENTO.',
         ];
     }
     protected function failedValidation(Validator $validator)

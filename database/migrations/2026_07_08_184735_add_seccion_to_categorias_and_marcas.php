@@ -9,22 +9,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('categorias', function (Blueprint $table) {
-            $table->enum('sesion', ['DESPENSA', 'LIBRERIA', 'MEDICAMENTO'])->after('nombre');
+            $table->enum('seccion', ['TIENDA', 'LIBRERIA', 'MEDICAMENTO'])->after('nombre');
         });
 
         Schema::table('marcas', function (Blueprint $table) {
-            $table->enum('sesion', ['DESPENSA', 'LIBRERIA', 'MEDICAMENTO'])->after('nombre');
+            $table->enum('seccion', ['TIENDA', 'LIBRERIA', 'MEDICAMENTO'])->after('nombre');
         });
     }
 
     public function down(): void
     {
         Schema::table('categorias', function (Blueprint $table) {
-            $table->dropColumn('sesion');
+            $table->dropColumn('seccion');
         });
 
         Schema::table('marcas', function (Blueprint $table) {
-            $table->dropColumn('sesion');
+            $table->dropColumn('seccion');
         });
     }
 };

@@ -23,9 +23,9 @@ class ProductoController extends Controller
                 $q->where('estado', 'ACTIVO');
             }
         ]);
-        //Filtro por sesión
-        if ($request->filled('sesion')) {
-            $query->where('sesion', $request->sesion);
+        //Filtro por sección
+        if ($request->filled('seccion')) {
+            $query->where('seccion', $request->seccion);
         }
 
         // Filtro por estado
@@ -83,7 +83,7 @@ class ProductoController extends Controller
                 'estado'           => 'ACTIVO',
                 'marca_id'         => $request->marca_id,
                 'categoria_id'     => $request->categoria_id,
-                'sesion'           => $request->sesion
+                'seccion'           => $request->seccion
             ]);
 
             if ($request->perecedero === 'PERECEDERO') {
@@ -147,16 +147,16 @@ class ProductoController extends Controller
             'categoria_id'     => $request->categoria_id,
         ];
 
-        // Si se envía 'sesion', aplicar regla según tipo de producto
-        if ($request->has('sesion')) {
+        // Si se envía 'seccion', aplicar regla según tipo de producto
+        if ($request->has('seccion')) {
             // Si es perecedero, solo permitir cambio si stock es 0
             if ($producto->perecedero === 'PERECEDERO' && $producto->stock > 0) {
                 return response()->json([
                     'message' => 'No se puede cambiar la sección porque el producto es perecedero y aún tiene stock disponible (stock actual: ' . $producto->stock . ').'
                 ], 422);
             }
-            // Si es NORMAL o PERECEDERO con stock 0, agregar sesion al array
-            $data['sesion'] = $request->sesion;
+            // Si es NORMAL o PERECEDERO con stock 0, agregar seccion al array
+            $data['seccion'] = $request->seccion;
         }
 
         $producto->update($data);
