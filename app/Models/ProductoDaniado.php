@@ -25,4 +25,10 @@ class ProductoDaniado extends Model
     {
         return $this->belongsTo(Producto::class);
     }
+
+    public function detalleDevolucionVenta()
+    {
+    return $this->hasOne(DetalleDevolucionVenta::class, 'producto_daniado_id');
+    }
 }
+

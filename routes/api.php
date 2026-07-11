@@ -21,6 +21,7 @@ use App\Http\Controllers\ReporteComprasController;
 use App\Http\Controllers\ReporteCreditoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CreditoController;
+use App\Http\Controllers\DevolucionVentaController;
 
 
 Route::get('/user', function (Request $request) {
@@ -48,6 +49,8 @@ Route::apiResource('creditos', CreditoController::class)->only(['index', 'show']
 Route::post('creditos/{id}/abonos', [CreditoController::class, 'storeAbono']);
 Route::patch('abonos/{id}/anular', [CreditoController::class, 'anularAbono']);
 Route::get('abonos/{id}/ticket', [CreditoController::class, 'ticketAbono']);
+//DEVOLUCION VENTAS
+Route::apiResource('devoluciones-ventas', DevolucionVentaController::class);
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('proveedores', ProveedorController::class);
