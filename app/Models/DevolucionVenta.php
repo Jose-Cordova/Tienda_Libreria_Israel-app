@@ -11,6 +11,7 @@ class DevolucionVenta extends Model
         'fecha',
         'motivo',
         'total',
+        'estado',
         'venta_id'
     ];
     protected $casts = [

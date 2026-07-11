@@ -16,6 +16,7 @@ return new class extends Migration
             $table->date('fecha');
             $table->string('motivo', 255);
             $table->decimal('total', 12,2);
+            $table->enum('estado', ['DEVUELTA', 'ANULADA'])->default('DEVUELTA');
             $table->unsignedBigInteger('venta_id');
             $table->foreign('venta_id')->references('id')->on('ventas');
             $table->timestamps();
