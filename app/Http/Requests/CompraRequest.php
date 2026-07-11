@@ -38,7 +38,7 @@ class CompraRequest extends FormRequest
             'detalles.*.perecedero' => 'nullable|in:NORMAL,PERECEDERO',
             'detalles.*.marca_id' => 'nullable|exists:marcas,id',
             'detalles.*.categoria_id' => 'nullable|exists:categorias,id',
-            'detalles.*.sesion' => 'nullable|in:DESPENSA,LIBRERIA,MEDICAMENTO',
+            'detalles.*.seccion' => 'nullable|in:DESPENSA,LIBRERIA,MEDICAMENTO',
             //Validacion para los lotes cuando el producto es perecedero
             'detalles.*.lotes' => 'nullable|array|min:1',
             'detalles.*.lotes.*.codigo_lote' => 'nullable|string|max:50',
@@ -69,7 +69,7 @@ class CompraRequest extends FormRequest
                         'perecedero' => 'El tipo de perecibilidad',
                         'marca_id' => 'La marca',
                         'categoria_id' => 'La categoría',
-                        'sesion' => 'La sesión de medida'
+                        'seccion' => 'La sección de medida'
                     ];
                     //Recorremos cada uno de los campos para el producto nuevo
                     foreach($camposRequeridos as $campo => $etiqueta){
