@@ -54,6 +54,10 @@ class VentaController extends Controller
         if ($request->metodo_pago_id) {
             $query->where('metodo_pago_id', $request->metodo_pago_id);
         }
+        // Filtrar por correlativo
+        if ($request->filled('correlativo')) {
+        $query->where('correlativo', $request->correlativo);
+        }
         if ($request->fecha_inicio) {
             $query->whereDate('fecha', '>=', $request->fecha_inicio);
         }
