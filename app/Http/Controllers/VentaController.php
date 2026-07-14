@@ -126,6 +126,7 @@ class VentaController extends Controller
             'correlativo' => $this->generarCorrelativo(),
             'fecha' => now(),
             'total' => 0,
+            'monto_recibido' => $data['monto_recibido'] ?? null,
             'tipo_cliente' => $data['tipo_cliente'],
             'estado' => $data['estado'],
             'metodo_pago_id'  => $data['metodo_pago_id'] ?? null,

@@ -22,6 +22,8 @@ class StoreVentaRequest extends FormRequest
             'tipo_cliente'      => 'required|in:DETALLES,MAYORISTA',
             'estado'            => 'required|in:PAGADA,CREDITO',
 
+            'monto_recibido'    => 'nullable|numeric|min:0',
+
             'detalle'                    => 'required|array|min:1',
             'detalle.*.producto_id'      => 'required|exists:productos,id',
             'detalle.*.cantidad'         => 'required|integer|min:1',
