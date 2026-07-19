@@ -21,6 +21,8 @@ use App\Http\Controllers\ReporteCreditoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CreditoController;
 use App\Http\Controllers\DevolucionVentaController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ForgotPasswordController;
 
 
 Route::get('/user', function (Request $request) {
@@ -58,7 +60,17 @@ Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::apiResource('ventas', VentaController::class);
     Route::get('/ventas/{id}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
+    //Rutas para gestion de usuarios
+    Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('users/{id}/status', [UserController::class, 'changeStatus']);
+    Route::post('users/{id}/resend', [UserController::class, 'resendInvitation']);
 });
+
+Route::post('set-password', [UserController::class, 'setPassword']);
+// Rutas para recuperación de contraseña
+Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail']);
+Route::post('reset-password', [ForgotPasswordController::class, 'reset']);
+
 Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaStockMinimo']);
 Route::patch('productos/{id}/cambiar-estado', [ProductoController::class, 'cambiarEstado']);
 Route::apiResource('productos', ProductoController::class);
