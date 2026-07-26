@@ -8,7 +8,7 @@
             font-size: 12px;
             margin: 0;
             padding: 0;
-            width: 200px; /* ligeramente menor al ancho del papel */
+            width: 200px;
         }
         .store-name { font-size: 14px; font-weight: bold; text-align: center; }
         .store-info { text-align: center; margin-bottom: 10px; }
@@ -18,6 +18,7 @@
         .precio { float: right; }
         .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 10px; }
         .credito { margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; }
+        .pago-efectivo { margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; }
     </style>
 </head>
 <body>
@@ -51,6 +52,13 @@
     <div class="separator"></div>
 
     <div class="total">Total: ${{ number_format($venta->total, 2) }}</div>
+
+    @if(strtoupper($venta->metodo_pago) === 'EFECTIVO' && $venta->monto_recibido)
+    <div class="pago-efectivo">
+        <div>Efectivo recibido: ${{ number_format($venta->monto_recibido, 2) }}</div>
+        <div>Vuelto: ${{ number_format($venta->monto_recibido - $venta->total, 2) }}</div>
+    </div>
+    @endif
 
     @if ($credito)
         <div class="credito">
