@@ -13,6 +13,7 @@ class ProductoDaniado extends Model
         'fecha',
         'costo_unitario',
         'total_perdida',
+        'estado',
         'producto_id'
     ];
     protected $casts = [

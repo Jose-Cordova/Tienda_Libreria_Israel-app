@@ -18,6 +18,7 @@ return new class extends Migration
             $table->date('fecha');
             $table->decimal('costo_unitario', 12,2);
             $table->decimal('total_perdida', 12,2);
+            $table->enum('estado', ['DEVOLUCION', 'DANIADO']);
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
             $table->timestamps();
