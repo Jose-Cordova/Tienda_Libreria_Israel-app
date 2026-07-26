@@ -34,7 +34,9 @@ class User extends Authenticatable implements JWTSubject
         'name',
         'email',
         'password',
-        'estado'
+        'estado',
+        'invitation_token',
+        'invitation_expires_at'
     ];
 
     /**
@@ -56,6 +58,7 @@ class User extends Authenticatable implements JWTSubject
     {
         return [
             'email_verified_at' => 'datetime',
+            'invitation_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

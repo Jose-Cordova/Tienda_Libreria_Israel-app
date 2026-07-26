@@ -17,8 +17,10 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('estado', ['ACTIVO', 'INACTIVO'])->default('ACTIVO');
+            $table->enum('estado', ['ACTIVO', 'INACTIVO', 'PENDIENTE'])->default('PENDIENTE');
             $table->rememberToken();
+            $table->string('invitation_token')->nullable()->unique();
+            $table->timestamp('invitation_expires_at')->nullable();
             $table->timestamps();
         });
 
