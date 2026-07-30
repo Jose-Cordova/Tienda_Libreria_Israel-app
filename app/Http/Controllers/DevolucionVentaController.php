@@ -147,6 +147,7 @@ class DevolucionVentaController extends Controller
                     'fecha'          => now(),
                     'costo_unitario' => $precioUnitario,
                     'total_perdida'  => $subtotal,
+                    'estado'         => 'DEVOLUCION',
                     'producto_id'    => $detalleVenta->producto_id,
                 ]);
 
