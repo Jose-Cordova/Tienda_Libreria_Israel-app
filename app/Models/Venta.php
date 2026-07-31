@@ -10,6 +10,7 @@ class Venta extends Model
         'correlativo',
         'fecha',
         'total',
+        'monto_recibido',
         'tipo_cliente',
         'estado',
         'metodo_pago_id',
