@@ -20,35 +20,52 @@ class DevolucionVentaController extends Controller
      * Display a listing of the resource.
      */
     public function index(Request $request)
-    {
-        try {
-            $request->validate([
-                'per_page' => 'nullable|integer|min:1|max:100'
-            ]);
+{
+    try {
+        $request->validate([
+            'per_page'     => 'nullable|integer|min:1|max:100',
+            'estado'       => 'nullable|in:DEVUELTA,ANULADA',
+            'fecha_inicio' => 'nullable|date',
+            'fecha_fin'    => 'nullable|date|after_or_equal:fecha_inicio',
+        ]);
 
-            $query = DevolucionVenta::with([
-                'detalleDevolucionVentas.producto',
-                'detalleDevolucionVentas.detalleVenta.lote',
-                'venta'
-            ]);
+        $query = DevolucionVenta::with([
+            'detalleDevolucionVentas.producto',
+            'detalleDevolucionVentas.productoDaniado',
+            'detalleDevolucionVentas.detalleVenta.lote',
+            'venta'
+        ]);
 
-            // Filtros opcionales (los iremos agregando después)
-            if ($request->filled('venta_id')) {
-                $query->where('venta_id', $request->venta_id);
-            }
-
-            $perPage = $request->get('per_page', 15);
-            $devoluciones = $query->orderBy('created_at', 'desc')->paginate($perPage);
-
-            return response()->json($devoluciones, 200);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'message' => 'Error al obtener las devoluciones.',
-                'error'   => $e->getMessage()
-            ], 500);
+        // Filtro por estado
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
         }
+
+        // Filtro por fecha de inicio
+        if ($request->fecha_inicio) {
+            $query->whereDate('fecha', '>=', $request->fecha_inicio);
+        }
+        if ($request->fecha_fin) {
+            $query->whereDate('fecha', '<=', $request->fecha_fin);
+        }
+
+        // Filtro por venta (ya existente)
+        if ($request->filled('venta_id')) {
+            $query->where('venta_id', $request->venta_id);
+        }
+
+        $perPage = $request->get('per_page', 15);
+        $devoluciones = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        return response()->json($devoluciones, 200);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'message' => 'Error al obtener las devoluciones.',
+            'error'   => $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Store a newly created resource in storage.

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->bigInteger('correlativo')->unique();
             $table->timestamp('fecha');
             $table->decimal('total', 12,2);
+            $table->decimal('monto_recibido', 12,2)->nullable();
             $table->enum('tipo_cliente', ['DETALLES', 'MAYORISTA'])->default('DETALLES');
             $table->enum('estado', ['PAGADA', 'CREDITO', 'ANULADA','DEVOLUCION'])->default('PAGADA');
             $table->unsignedBigInteger('user_id');

@@ -54,6 +54,10 @@ class VentaController extends Controller
         if ($request->metodo_pago_id) {
             $query->where('metodo_pago_id', $request->metodo_pago_id);
         }
+        // Filtrar por correlativo
+        if ($request->filled('correlativo')) {
+        $query->where('correlativo', $request->correlativo);
+        }
         if ($request->fecha_inicio) {
             $query->whereDate('fecha', '>=', $request->fecha_inicio);
         }
@@ -122,6 +126,7 @@ class VentaController extends Controller
             'correlativo' => $this->generarCorrelativo(),
             'fecha' => now(),
             'total' => 0,
+            'monto_recibido' => $data['monto_recibido'] ?? null,
             'tipo_cliente' => $data['tipo_cliente'],
             'estado' => $data['estado'],
             'metodo_pago_id'  => $data['metodo_pago_id'] ?? null,

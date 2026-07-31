@@ -38,7 +38,7 @@ class CompraRequest extends FormRequest
             'detalles.*.perecedero' => 'nullable|in:NORMAL,PERECEDERO',
             'detalles.*.marca_id' => 'nullable|exists:marcas,id',
             'detalles.*.categoria_id' => 'nullable|exists:categorias,id',
-            'detalles.*.seccion' => 'nullable|in:DESPENSA,LIBRERIA,MEDICAMENTO',
+            'detalles.*.seccion' => 'nullable|in:TIENDA,LIBRERIA,MEDICAMENTO',
             //Validacion para los lotes cuando el producto es perecedero
             'detalles.*.lotes' => 'nullable|array|min:1',
             'detalles.*.lotes.*.codigo_lote' => 'nullable|string|max:50',
