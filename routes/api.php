@@ -23,6 +23,7 @@ use App\Http\Controllers\CreditoController;
 use App\Http\Controllers\DevolucionVentaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\ConfiguracionController;
 
 
 Route::get('/user', function (Request $request) {
@@ -55,6 +56,8 @@ Route::apiResource('devoluciones-ventas', DevolucionVentaController::class);
 //VENTAS
 Route::apiResource('ventas', VentaController::class);
 Route::get('/ventas/{id}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
+//CONFIGURACIÓN
+Route::apiResource('configuracion', ConfiguracionController::class);
 
 Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('proveedores', ProveedorController::class);
