@@ -2,32 +2,25 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 18px; }
-        .header p { margin: 2px 0; font-size: 11px; }
-        .report-title { font-size: 14px; font-weight: bold; margin: 15px 0 10px 0; border-bottom: 1px solid #000; padding-bottom: 5px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-        th, td { border: 1px solid #000; padding: 4px 6px; text-align: left; }
-        th { background-color: #e0e0e0; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .summary { margin-top: 30px; border-top: 2px solid #000; padding-top: 10px; }
-        .summary table { width: 60%; margin-left: auto; }
-        .summary td { border: none; padding: 3px 8px; }
-    </style>
+    @include('reportes.css.Pdf')
 </head>
 <body>
+    <!-- ENCABEZADO -->
     <div class="header">
-        <h1>{{ $config->nombre_tienda }}</h1>
-        <p>Tel: {{ $config->telefono }} | Email: {{ $config->email }}</p>
-        <h2>REPORTE GENERAL</h2>
-        <p>Período: {{ $inicio }} al {{ $fin }}</p>
+        <div>
+            <div class="empresa">{{ $config->nombre_tienda }}</div>
+            <div class="empresa-detalle">
+                Tel: {{ $config->telefono }} | Email: {{ $config->email }}
+            </div>
+        </div>
+        <div class="reporte-info">
+            <div class="reporte-titulo">REPORTE GENERAL</div>
+            <div class="reporte-periodo">Período: {{ $inicio }} al {{ $fin }}</div>
+        </div>
     </div>
 
     @if($compras->isNotEmpty())
-        <div class="report-title">COMPRAS</div>
+        <div class="seccion-titulo">COMPRAS</div>
         <table>
             <thead>
                 <tr>
@@ -51,13 +44,13 @@
     @endif
 
     @if($ventas->isNotEmpty())
-        <div class="report-title">VENTAS</div>
+        <div class="seccion-titulo">VENTAS</div>
         <table>
             <thead>
                 <tr>
                     <th>N°</th>
-                    <th>Correlativo</th>
                     <th>Fecha</th>
+                    <th>Correlativo</th>
                     <th>Método</th>
                     <th class="text-right">Total</th>
                 </tr>
@@ -66,8 +59,8 @@
                 @foreach($ventas as $v)
                 <tr>
                     <td class="text-center">{{ $v->nro }}</td>
-                    <td>{{ $v->correlativo }}</td>
                     <td>{{ $v->fecha }}</td>
+                    <td>{{ $v->correlativo }}</td>
                     <td>{{ $v->metodo }}</td>
                     <td class="text-right">${{ number_format($v->total, 2) }}</td>
                 </tr>
@@ -77,14 +70,13 @@
     @endif
 
     @if($devoluciones->isNotEmpty())
-        <div class="report-title">DEVOLUCIONES</div>
+        <div class="seccion-titulo">DEVOLUCIONES</div>
         <table>
             <thead>
                 <tr>
                     <th>N°</th>
                     <th>Fecha</th>
                     <th>Venta</th>
-                    <th>Motivo</th>
                     <th class="text-right">Total</th>
                 </tr>
             </thead>
@@ -94,7 +86,6 @@
                     <td class="text-center">{{ $d->nro }}</td>
                     <td>{{ $d->fecha }}</td>
                     <td>{{ $d->venta_correlativo }}</td>
-                    <td>{{ $d->motivo }}</td>
                     <td class="text-right">${{ number_format($d->total, 2) }}</td>
                 </tr>
                 @endforeach
@@ -103,18 +94,16 @@
     @endif
 
     @if($daniados->isNotEmpty())
-        <div class="report-title">PRODUCTOS DAÑADOS</div>
+        <div class="seccion-titulo">PRODUCTOS DAÑADOS</div>
         <table>
             <thead>
                 <tr>
                     <th>N°</th>
                     <th>Fecha</th>
                     <th>Producto</th>
-                    <th>Descripción</th>
                     <th class="text-center">Cant.</th>
                     <th class="text-right">Costo Unit.</th>
                     <th class="text-right">Total Pérdida</th>
-                    <th>Origen</th>
                 </tr>
             </thead>
             <tbody>
@@ -123,19 +112,18 @@
                     <td class="text-center">{{ $pd->nro }}</td>
                     <td>{{ $pd->fecha }}</td>
                     <td>{{ $pd->producto }}</td>
-                    <td>{{ $pd->descripcion }}</td>
                     <td class="text-center">{{ $pd->cantidad }}</td>
                     <td class="text-right">${{ number_format($pd->costo_unitario, 2) }}</td>
                     <td class="text-right">${{ number_format($pd->total_perdida, 2) }}</td>
-                    <td>{{ $pd->estado === 'DEVOLUCION' ? 'Devolución' : 'Manual' }}</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
     @endif
 
-    <div class="summary">
-        <table>
+    <!-- RESUMEN -->
+    <div style="margin-top: 30px; border-top: 2px solid #0a3622; padding-top: 10px;">
+        <table style="width: 60%; margin-left: auto;">
             <tr>
                 <td><strong>Total Compras</strong></td>
                 <td class="text-right">${{ number_format($totalCompras, 2) }}</td>
@@ -147,16 +135,16 @@
             @if($devoluciones->isNotEmpty())
             <tr>
                 <td><strong>Total Devoluciones</strong></td>
-                <td class="text-right">${{ number_format($totalDevoluciones, 2) }}</td>
+                <td class="text-right negativo">${{ number_format($totalDevoluciones, 2) }}</td>
             </tr>
             @endif
             @if($daniados->isNotEmpty())
             <tr>
                 <td><strong>Total Pérdidas por Daños</strong></td>
-                <td class="text-right">${{ number_format($totalPerdidas, 2) }}</td>
+                <td class="text-right negativo">${{ number_format($totalPerdidas, 2) }}</td>
             </tr>
             @endif
-            <tr style="border-top: 1px solid #000; font-size: 13px;">
+            <tr class="total-final">
                 <td><strong>GANANCIA NETA</strong></td>
                 <td class="text-right"><strong>${{ number_format($gananciaNeta, 2) }}</strong></td>
             </tr>
