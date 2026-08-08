@@ -77,6 +77,7 @@ class ProductoController extends Controller
                 'nombre'           => $request->nombre,
                 'precio_detalle'   => $request->precio_detalle,
                 'precio_mayor'     => $request->precio_mayor,
+                'costo_promedio'   => 0,
                 'stock'            => $request->cantidad_inicial,
                 'stock_minimo'     => $request->stock_minimo,
                 'perecedero'       => $request->perecedero,
