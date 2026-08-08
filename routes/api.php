@@ -23,6 +23,7 @@ use App\Http\Controllers\CreditoController;
 use App\Http\Controllers\DevolucionVentaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\ProductoDaniadoController;
 
 
 Route::get('/user', function (Request $request) {
@@ -52,6 +53,11 @@ Route::patch('abonos/{id}/anular', [CreditoController::class, 'anularAbono']);
 Route::get('abonos/{id}/ticket', [CreditoController::class, 'ticketAbono']);
 //DEVOLUCION VENTAS
 Route::apiResource('devoluciones-ventas', DevolucionVentaController::class);
+//PRODUCTOS DAÑADOS
+Route::apiResource('productos-daniados', ProductoDaniadoController::class);
+Route::post('productos-daniados/{id}/anular', [ProductoDaniadoController::class, 'anular']);
+Route::post('productos-daniados/{id}/aceptar', [ProductoDaniadoController::class, 'aceptar']);
+Route::post('productos-daniados/{id}/rechazar', [ProductoDaniadoController::class, 'rechazar']);
 //VENTAS
 Route::apiResource('ventas', VentaController::class);
 Route::get('/ventas/{id}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
