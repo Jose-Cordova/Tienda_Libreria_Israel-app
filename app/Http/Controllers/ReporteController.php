@@ -4,128 +4,89 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Configuracion;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 
 class ReporteController extends Controller
 {
-    /**
-     * Devuelve datos JSON para la vista Vue
-     */
-
-    public function resumenJson(Request $request)
+    public function general(Request $request)
     {
         $request->validate([
-            'fecha_inicio' => 'nullable|date',
-            'fecha_fin'    => 'nullable|date|after_or_equal:fecha_inicio',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
         ]);
 
-        return response()->json([
-            'ventas'  => $this->obtenerVentas($request)->values(),
-            'compras' => $this->obtenerCompras($request)->values(),
-        ]);
-    }
+        $inicio = $request->fecha_inicio;
+        $fin    = $request->fecha_fin;
 
-    /**
-     * Genera el PDF del reporte general con DomPDF
-     */
-    public function reporteGeneral(Request $request)
-    {
-        $request->validate([
-            'fecha_inicio' => 'nullable|date',
-            'fecha_fin'    => 'nullable|date|after_or_equal:fecha_inicio',
-        ]);
+        // Datos de la tienda para el encabezado
+        $config = Configuracion::first();
 
+        // 1. Compras
+        $compras = DB::table('compras')
+            ->join('proveedores', 'compras.proveedor_id', '=', 'proveedores.id')
+            ->whereBetween('compras.fecha_registro', [$inicio, $fin])
+            ->select('compras.fecha_registro as fecha', 'proveedores.nombre as proveedor', 'compras.total')
+            ->orderBy('compras.fecha_registro')
+            ->get()
+            ->map(function ($item, $index) {
+                $item->nro = $index + 1;
+                return $item;
+            });
 
-        $fechaInicio = $request->fecha_inicio ?? 'Inicio';
-        $fechaFin    = $request->fecha_fin    ?? 'Hoy';
+        // 2. Ventas (solo PAGADA)
+        $ventas = DB::table('ventas')
+            ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+            ->where('ventas.estado', 'PAGADA')
+            ->whereBetween('ventas.fecha', [$inicio, $fin])
+            ->select('ventas.correlativo', 'ventas.fecha', 'ventas.total', 'metodos_pagos.nombre as metodo')
+            ->orderBy('ventas.fecha')
+            ->get()
+            ->map(function ($item, $index) {
+                $item->nro = $index + 1;
+                return $item;
+            });
 
-        $ventas  = $this->obtenerVentas($request);
-        $compras = $this->obtenerCompras($request);
+        // 3. Devoluciones (solo DEVUELTA)
+        $devoluciones = DB::table('devoluciones_ventas')
+            ->join('ventas', 'devoluciones_ventas.venta_id', '=', 'ventas.id')
+            ->where('devoluciones_ventas.estado', 'DEVUELTA')
+            ->whereBetween('devoluciones_ventas.fecha', [$inicio, $fin])
+            ->select('devoluciones_ventas.fecha', 'devoluciones_ventas.motivo', 'devoluciones_ventas.total', 'ventas.correlativo as venta_correlativo')
+            ->orderBy('devoluciones_ventas.fecha')
+            ->get()
+            ->map(function ($item, $index) {
+                $item->nro = $index + 1;
+                return $item;
+            });
 
-        $ventasPagadas      = $ventas->where('estado', 'PAGADA');
-        $totalCaja          = $ventasPagadas->sum('total');
-        $totalDeudas        = $ventas->where('estado', 'CREDITO')->sum('total');
-        // Se filtran las ventas pagadas por método de pago para calcular los totales
-        $totalEfectivo      = $ventasPagadas->filter(fn($v) => strtoupper($v['metodo_pago']) === 'EFECTIVO')->sum('total');
-        $totalTransferencia = $ventasPagadas->filter(fn($v) => strtoupper($v['metodo_pago']) === 'TRANSFERENCIA')->sum('total');
-        $totalRegistrosV    = $ventas->count();
+        // 4. Productos Dañados
+        $daniados = DB::table('productos_daniados')
+            ->join('productos', 'productos_daniados.producto_id', '=', 'productos.id')
+            ->whereBetween('productos_daniados.fecha', [$inicio, $fin])
+            ->select('productos_daniados.fecha', 'productos.nombre as producto', 'productos_daniados.descripcion', 'productos_daniados.cantidad', 'productos_daniados.costo_unitario', 'productos_daniados.total_perdida', 'productos_daniados.estado')
+            ->orderBy('productos_daniados.fecha')
+            ->get()
+            ->map(function ($item, $index) {
+                $item->nro = $index + 1;
+                return $item;
+            });
 
-        $totalCompras    = $compras->sum('total');
-        $totalRegistrosC = $compras->count();
-        $ganancia        = $totalCaja - $totalCompras;
+        // Totales para el resumen
+        $totalCompras      = $compras->sum('total');
+        $totalVentas       = $ventas->sum('total');
+        $totalDevoluciones = $devoluciones->sum('total');
+        $totalPerdidas     = $daniados->sum('total_perdida');
+        $gananciaNeta      = $totalVentas - $totalCompras - $totalDevoluciones - $totalPerdidas;
 
-        return Pdf::loadView('reportes.General', compact(
-            'ventas', 'totalRegistrosV', 'totalCaja', 'totalDeudas',
-            'totalEfectivo', 'totalTransferencia',
-            'compras', 'totalCompras', 'totalRegistrosC',
-            'ganancia', 'fechaInicio', 'fechaFin'
-        ))
-        ->setPaper('a4', 'portrait')
-        ->stream('reporte_general.pdf');
-    }
+        // Pasar a la vista solo las colecciones que tengan datos
+        $pdf = Pdf::loadView('reportes.General', compact(
+            'config', 'inicio', 'fin',
+            'compras', 'ventas', 'devoluciones', 'daniados',
+            'totalCompras', 'totalVentas', 'totalDevoluciones', 'totalPerdidas', 'gananciaNeta'
+        ));
 
-    // Se crea un método privado para obtener las ventas filtradas según los parámetros de la solicitud
-    private function obtenerVentas(Request $request)
-    {
-        // Preparamos la consulta
-        $query = DB::table('ventas as v')
-            ->join('metodos_pagos as mp', 'v.metodo_pago_id', '=', 'mp.id')
-            ->leftJoin('creditos as c', 'v.id', '=', 'c.venta_id')
-            ->leftJoin('clientes_creditos as cc', 'c.cliente_credito_id', '=', 'cc.id')
-
-            ->select(
-                'v.correlativo', 'v.fecha', 'v.tipo_cliente', 'v.estado', 'v.total',
-                'mp.nombre as metodo_pago',
-                'cc.nombre as cliente_credito_nombre',
-                // Se agrega una subconsulta para contar la cantidad de artículos en cada venta
-                DB::raw('(SELECT COALESCE(SUM(cantidad), 0) FROM detalle_ventas WHERE venta_id = v.id) as articulos')
-            )
-            ->whereIn('v.estado', ['PAGADA', 'CREDITO'])
-            ->orderBy('v.fecha', 'desc');
-
-        if ($request->fecha_inicio) $query->whereDate('v.fecha', '>=', $request->fecha_inicio);
-        if ($request->fecha_fin)    $query->whereDate('v.fecha', '<=', $request->fecha_fin);
-
-        return $query->get()->map(function ($v) {
-            return [
-                'correlativo'  => $v->correlativo,
-                'cliente'      => $v->estado === 'CREDITO' ? ($v->cliente_credito_nombre ?? 'Sin nombre') : 'Consumidor final',
-                'fecha'        => Carbon::parse($v->fecha)->format('d/m/Y'),
-                'tipo_cliente' => $v->tipo_cliente,
-                'metodo_pago'  => $v->metodo_pago,
-                'articulos'    => $v->articulos,
-                'total'        => $v->total,
-                'estado'       => $v->estado,
-            ];
-        });
-    }
-
-    private function obtenerCompras(Request $request)
-    {
-        $query = DB::table('compras as c')
-            ->join('proveedores as p', 'c.proveedor_id', '=', 'p.id')
-            ->select(
-                'p.nombre as proveedor', 'p.telefono',
-                'c.numero_factura', 'c.fecha_registro', 'c.total',
-                // Se agrega una subconsulta para contar la cantidad de productos en cada compra
-                DB::raw('(SELECT COALESCE(SUM(cantidad), 0) FROM detalle_compras WHERE compra_id = c.id) as productos')
-            )
-            ->where('c.estado', 'REGISTRADA')
-            ->orderBy('c.fecha_registro', 'desc');
-
-        if ($request->fecha_inicio) $query->whereDate('c.fecha_registro', '>=', $request->fecha_inicio);
-        if ($request->fecha_fin)    $query->whereDate('c.fecha_registro', '<=', $request->fecha_fin);
-
-        return $query->get()->map(function ($c) {
-            return [
-                'proveedor'      => $c->proveedor,
-                'telefono'       => $c->telefono,
-                'numero_factura' => $c->numero_factura,
-                'fecha'          => Carbon::parse($c->fecha_registro)->format('d/m/Y'),
-                'productos'      => $c->productos,
-                'total'          => $c->total,
-            ];
-        });
+        $pdf->setPaper('A4', 'portrait');
+        return $pdf->stream("reporte-general-{$inicio}-{$fin}.pdf");
     }
 }

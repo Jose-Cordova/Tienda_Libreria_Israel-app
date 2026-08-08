@@ -95,4 +95,5 @@ Route::get('/reportes/historial',       [ReporteHistorialController::class, 'rep
 Route::get('/reportes/creditos', [ReporteCreditoController::class, 'reporteCreditos']);
 Route::get('/reportes/creditos-datos', [ReporteCreditoController::class, 'creditosDatos']);
 
-
+// Reportes
+Route::get('reportes/general', [ReporteController::class, 'general']);
