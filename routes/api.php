@@ -24,6 +24,8 @@ use App\Http\Controllers\DevolucionVentaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\CronogramaProveedorController;
+use App\Http\Controllers\NotaController;
 
 
 Route::get('/user', function (Request $request) {
@@ -71,6 +73,9 @@ Route::middleware(['auth:api', 'role:ADMIN'])->group(function(){
     Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::patch('users/{id}/status', [UserController::class, 'changeStatus']);
     Route::post('users/{id}/resend', [UserController::class, 'resendInvitation']);
+
+    Route::apiResource('cronograma-proveedores', CronogramaProveedorController::class);
+    Route::apiResource('notas', NotaController::class);
 });
 
 Route::post('set-password', [UserController::class, 'setPassword']);

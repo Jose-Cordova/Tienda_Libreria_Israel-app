@@ -1,0 +1,24 @@
+{
+  "include": [
+    "app/**/*.php",
+    "routes/**/*.php",
+    "database/migrations/**/*.php",
+    "database/factories/**/*.php",
+    "database/seeders/**/*.php",
+    "config/**/*.php",
+    "composer.json",
+    "docs/**",
+    "README.md"
+  ],
+  "exclude": [
+    "vendor/**",
+    "storage/**",
+    "bootstrap/cache/**",
+    ".env",
+    ".env.*",
+    "tests/**",
+    "database/*.sqlite",
+    "**/*.log",
+    "public/**"
+  ]
+}
