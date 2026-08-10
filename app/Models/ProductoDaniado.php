@@ -14,7 +14,9 @@ class ProductoDaniado extends Model
         'costo_unitario',
         'total_perdida',
         'estado',
-        'producto_id'
+        'producto_id',
+        'lote_id',
+        'estado_reclamacion'
     ];
     protected $casts = [
         'fecha' => 'date',
@@ -27,9 +29,14 @@ class ProductoDaniado extends Model
         return $this->belongsTo(Producto::class);
     }
 
+    public function lote()
+    {
+        return $this->belongsTo(Lote::class);
+    }
+
     public function detalleDevolucionVenta()
     {
-    return $this->hasOne(DetalleDevolucionVenta::class, 'producto_daniado_id');
+        return $this->hasOne(DetalleDevolucionVenta::class, 'producto_daniado_id');
     }
 }
 

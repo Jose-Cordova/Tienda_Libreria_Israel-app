@@ -22,12 +22,10 @@ class VentaController extends Controller
     public function index(Request $request)
 {
     try {
-        // Validar per_page
         $request->validate([
             'per_page' => 'nullable|integer|min:1|max:100'
         ]);
 
-        // Consulta base
         $query = Venta::with([
             'user',
             'metodoPago',
@@ -36,7 +34,6 @@ class VentaController extends Controller
             'credito.clienteCredito'
         ]);
 
-        // Aplicar filtros (los mismos que ya tenés)
         if ($request->estado) {
             $query->where('estado', $request->estado);
         }
@@ -54,9 +51,8 @@ class VentaController extends Controller
         if ($request->metodo_pago_id) {
             $query->where('metodo_pago_id', $request->metodo_pago_id);
         }
-        // Filtrar por correlativo
         if ($request->filled('correlativo')) {
-        $query->where('correlativo', $request->correlativo);
+            $query->where('correlativo', $request->correlativo);
         }
         if ($request->fecha_inicio) {
             $query->whereDate('fecha', '>=', $request->fecha_inicio);
@@ -65,7 +61,7 @@ class VentaController extends Controller
             $query->whereDate('fecha', '<=', $request->fecha_fin);
         }
 
-        // Calcular totales globales (sin paginación, mismos filtros)
+        // Calcular totales globales (ahora incluye DEVOLUCION)
         $totalesQuery = clone $query;
         $totales = $totalesQuery->selectRaw("
             COUNT(*) as total_ventas,
@@ -74,14 +70,14 @@ class VentaController extends Controller
             COUNT(CASE WHEN estado = 'CREDITO' THEN 1 END) as cantidad_credito,
             COALESCE(SUM(CASE WHEN estado = 'CREDITO' THEN total END), 0) as total_credito,
             COUNT(CASE WHEN estado = 'ANULADA' THEN 1 END) as cantidad_anuladas,
-            COALESCE(SUM(CASE WHEN estado = 'ANULADA' THEN total END), 0) as total_anuladas
+            COALESCE(SUM(CASE WHEN estado = 'ANULADA' THEN total END), 0) as total_anuladas,
+            COUNT(CASE WHEN estado = 'DEVOLUCION' THEN 1 END) as cantidad_devueltas,
+            COALESCE(SUM(CASE WHEN estado = 'DEVOLUCION' THEN total END), 0) as total_devueltas
         ")->first();
 
-        // Paginación
         $perPage = $request->get('per_page', 15);
         $ventas = $query->orderBy('fecha', 'desc')->paginate($perPage);
 
-        // Agregar totales a la respuesta
         $response = $ventas->toArray();
         $response['totales'] = [
             'pagadas' => [
@@ -95,6 +91,10 @@ class VentaController extends Controller
             'anuladas' => [
                 'cantidad' => (int) $totales->cantidad_anuladas,
                 'total' => (float) $totales->total_anuladas,
+            ],
+            'devueltas' => [
+                'cantidad' => (int) $totales->cantidad_devueltas,
+                'total' => (float) $totales->total_devueltas,
             ],
         ];
 
