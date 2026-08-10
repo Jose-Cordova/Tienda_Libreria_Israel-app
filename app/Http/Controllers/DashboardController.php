@@ -100,7 +100,9 @@ class DashboardController extends Controller
             ->orderBy('cronograma_proveedores.fecha', 'asc')
             ->get()
             ->map(function($v) {
-                $v->dias = now()->diffInDays($v->fecha);
+                $fechaVisita = \Carbon\Carbon::parse($v->fecha)->startOfDay();
+                $hoy = now()->startOfDay();
+                $v->dias = (int) $hoy->diffInDays($fechaVisita, false);
                 return $v;
             });
     }
