@@ -108,3 +108,7 @@ Route::get('/reportes/creditos-datos', [ReporteCreditoController::class, 'credit
 
 // Reportes
 Route::get('reportes/general', [ReporteController::class, 'general']);
+Route::get('reportes/ventas', [ReporteController::class, 'ventas']);
+Route::get('reportes/compras', [ReporteController::class, 'compras']);
+Route::get('reportes/creditos', [ReporteController::class, 'creditos']);
+Route::get('reportes/productos-daniados', [ReporteController::class, 'productosDaniados']);
