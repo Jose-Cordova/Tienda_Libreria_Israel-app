@@ -597,4 +597,229 @@ public function productosDaniados(Request $request)
 
     return $pdf->stream("reporte-productos-daniados-{$inicio}-{$fin}.pdf");
 }
+
+/////////////////////////////////////
+// REPORTE DE PRODUCTOS(INVENTARIO)//
+/////////////////////////////////////
+
+
+public function inventario(Request $request)
+{
+    $request->validate([
+        'seccion'      => 'nullable|string|in:DESPENSA,LIBRERIA,MEDICAMENTO',
+        'marca_id'     => 'nullable|integer|exists:marcas,id',
+        'categoria_id' => 'nullable|integer|exists:categorias,id',
+        'estado'       => 'nullable|string|in:ACTIVO,INACTIVO',
+    ]);
+
+    // Filtros activos
+    $filtrosActivos = [];
+    if ($request->filled('seccion')) {
+        $filtrosActivos['Sección'] = $request->seccion;
+    }
+    if ($request->filled('marca_id')) {
+        $marca = DB::table('marcas')->find($request->marca_id);
+        $filtrosActivos['Marca'] = $marca ? $marca->nombre : $request->marca_id;
+    }
+    if ($request->filled('categoria_id')) {
+        $categoria = DB::table('categorias')->find($request->categoria_id);
+        $filtrosActivos['Categoría'] = $categoria ? $categoria->nombre : $request->categoria_id;
+    }
+    if ($request->filled('estado')) {
+        $filtrosActivos['Estado'] = $request->estado;
+    }
+
+    $config = Configuracion::first();
+
+    // Consulta de inventario
+    $productosQuery = DB::table('productos')
+        ->join('marcas', 'productos.marca_id', '=', 'marcas.id')
+        ->join('categorias', 'productos.categoria_id', '=', 'categorias.id')
+        ->select(
+            'productos.id',
+            'productos.nombre',
+            'productos.seccion',
+            'marcas.nombre as marca',
+            'categorias.nombre as categoria',
+            'productos.stock',
+            'productos.stock_minimo',
+            'productos.precio_detalle',
+            'productos.precio_mayor',
+            'productos.perecedero',
+            'productos.estado'
+        )
+        ->orderBy('productos.seccion')
+        ->orderBy('productos.nombre');
+
+    if ($request->filled('seccion')) {
+        $productosQuery->where('productos.seccion', $request->seccion);
+    }
+    if ($request->filled('marca_id')) {
+        $productosQuery->where('productos.marca_id', $request->marca_id);
+    }
+    if ($request->filled('categoria_id')) {
+        $productosQuery->where('productos.categoria_id', $request->categoria_id);
+    }
+    if ($request->filled('estado')) {
+        $productosQuery->where('productos.estado', $request->estado);
+    }
+
+    $productos = $productosQuery->get()->map(function ($item, $index) {
+        $item->nro = $index + 1;
+        $item->stock_bajo = $item->stock <= $item->stock_minimo;
+        return $item;
+    });
+
+    // Totales
+    $totalProductos  = $productos->count();
+    $totalStock      = $productos->sum('stock');
+    $productosBajos  = $productos->where('stock_bajo', true)->count();
+
+    // Generar PDF
+    $pdf = Pdf::loadView('reportes.Inventario', compact(
+        'config',
+        'productos', 'totalProductos', 'totalStock', 'productosBajos',
+        'filtrosActivos'
+    ));
+
+    $pdf->getDomPDF()->set_option("isPhpEnabled", true);
+    $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
+    $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+    $pdf->setPaper('A4', 'portrait');
+    $pdf->render();
+
+    $canvas = $pdf->getDomPDF()->getCanvas();
+    $canvas->page_text(
+        270,
+        $canvas->get_height() - 30,
+        "Página {PAGE_NUM} de {PAGE_COUNT}",
+        "DejaVu Sans",
+        9,
+        [0.5, 0.5, 0.5]
+    );
+
+    return $pdf->stream("reporte-inventario.pdf");
+}
+
+
+/////////////////////////////////////
+// REPORTE DE PRODUCTOS(INVENTARIO)//
+/////////////////////////////////////
+
+
+public function cierreDiario(Request $request)
+{
+    $request->validate([
+        'fecha' => 'required|date',
+    ]);
+
+    $fecha = $request->fecha;
+    $config = Configuracion::first();
+
+    // --- 1. Ventas en efectivo ---
+    $efectivo = DB::table('ventas')
+        ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+        ->whereDate('ventas.fecha', $fecha)
+        ->where('metodos_pagos.nombre', 'EFECTIVO')
+        ->select('ventas.correlativo', 'ventas.fecha', 'ventas.total')
+        ->orderBy('ventas.fecha')
+        ->get()
+        ->map(function ($item, $index) {
+            $item->nro = $index + 1;
+            $item->hora = date('H:i:s', strtotime($item->fecha));
+            return $item;
+        });
+
+    // --- 2. Ventas por transferencia ---
+    $transferencia = DB::table('ventas')
+        ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+        ->whereDate('ventas.fecha', $fecha)
+        ->where('metodos_pagos.nombre', 'TRANSFERENCIA')
+        ->select('ventas.correlativo', 'ventas.fecha', 'ventas.total')
+        ->orderBy('ventas.fecha')
+        ->get()
+        ->map(function ($item, $index) {
+            $item->nro = $index + 1;
+            $item->hora = date('H:i:s', strtotime($item->fecha));
+            return $item;
+        });
+
+    // --- 3. Ventas al crédito ---
+    $credito = DB::table('ventas')
+        ->leftJoin('creditos', 'ventas.id', '=', 'creditos.venta_id')
+        ->leftJoin('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
+        ->whereDate('ventas.fecha', $fecha)
+        ->where('ventas.estado', 'CREDITO')
+        ->select(
+            'ventas.correlativo',
+            'ventas.fecha',
+            'ventas.total',
+            'clientes_creditos.nombre as cliente',
+            'creditos.monto_adeudado'
+        )
+        ->orderBy('ventas.fecha')
+        ->get()
+        ->map(function ($item, $index) {
+            $item->nro = $index + 1;
+            $item->hora = date('H:i:s', strtotime($item->fecha));
+            return $item;
+        });
+
+    // --- 4. Devoluciones del día ---
+    $devoluciones = DB::table('devoluciones_ventas')
+        ->join('ventas', 'devoluciones_ventas.venta_id', '=', 'ventas.id')
+        ->where('devoluciones_ventas.estado', 'DEVUELTA')
+        ->whereDate('devoluciones_ventas.fecha', $fecha)
+        ->select(
+            'devoluciones_ventas.fecha',
+            'devoluciones_ventas.total',
+            'devoluciones_ventas.motivo',
+            'ventas.correlativo as venta_correlativo'
+        )
+        ->orderBy('devoluciones_ventas.fecha')
+        ->get()
+        ->map(function ($item, $index) {
+            $item->nro = $index + 1;
+            return $item;
+        });
+
+    // --- Totales ---
+    $totalEfectivo      = $efectivo->sum('total');
+    $totalTransferencia = $transferencia->sum('total');
+    $totalCredito       = $credito->sum('total');
+    $totalDevoluciones  = $devoluciones->sum('total');
+    $totalVentas        = $totalEfectivo + $totalTransferencia + $totalCredito;
+    $totalNeto          = $totalVentas - $totalDevoluciones;
+
+    // Generar PDF
+    $pdf = Pdf::loadView('reportes.CierreDiario', compact(
+        'config', 'fecha',
+        'efectivo', 'transferencia', 'credito', 'devoluciones',
+        'totalEfectivo', 'totalTransferencia', 'totalCredito',
+        'totalDevoluciones', 'totalVentas', 'totalNeto'
+    ));
+
+    $pdf->getDomPDF()->set_option("isPhpEnabled", true);
+    $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
+    $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+    $pdf->setPaper('A4', 'portrait');
+    $pdf->render();
+
+    $canvas = $pdf->getDomPDF()->getCanvas();
+    $canvas->page_text(
+        270,
+        $canvas->get_height() - 30,
+        "Página {PAGE_NUM} de {PAGE_COUNT}",
+        "DejaVu Sans",
+        9,
+        [0.5, 0.5, 0.5]
+    );
+
+    return $pdf->stream("cierre-diario-{$fecha}.pdf");
+}
+
+
+//////////////////////////////////
+// REPORTE DE CAMBIO DE PRODUCTO//
+//////////////////////////////////
 }
