@@ -116,7 +116,6 @@ class ReporteController extends Controller
 // REPORTE DE VENTAS//
 //////////////////////
 
-
 public function ventas(Request $request)
 {
     $request->validate([
@@ -151,12 +150,16 @@ public function ventas(Request $request)
 
     // --- 1. VENTAS con sus detalles ---
     $ventasQuery = DB::table('ventas')
-        ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+        ->leftJoin('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
         ->whereBetween('ventas.fecha', [$inicio, $fin])
         ->select(
-            'ventas.id', 'ventas.correlativo', 'ventas.fecha', 'ventas.total',
-            'ventas.tipo_cliente', 'ventas.estado',
-            'metodos_pagos.nombre as metodo'
+            'ventas.id',
+            'ventas.correlativo',
+            'ventas.fecha',
+            'ventas.total',
+            'ventas.tipo_cliente',
+            'ventas.estado',
+            DB::raw("COALESCE(metodos_pagos.nombre, 'Crédito') as metodo")
         );
 
     if ($request->filled('tipo_cliente')) {
@@ -204,7 +207,6 @@ public function ventas(Request $request)
             ->where('devoluciones_ventas.estado', 'DEVUELTA')
             ->whereBetween('devoluciones_ventas.fecha', [$inicio, $fin]);
 
-        // Aplicar los mismos filtros de ventas a la venta relacionada
         if ($request->filled('tipo_cliente')) {
             $devolucionesQuery->where('ventas.tipo_cliente', $request->tipo_cliente);
         }
@@ -221,7 +223,6 @@ public function ventas(Request $request)
             ->orderBy('devoluciones_ventas.fecha')
             ->get();
 
-        // Detalles de devoluciones
         $devolucionIds = $devoluciones->pluck('id');
         $detallesDevoluciones = DB::table('detalle_devoluciones_ventas')
             ->join('productos', 'detalle_devoluciones_ventas.producto_id', '=', 'productos.id')
@@ -241,7 +242,6 @@ public function ventas(Request $request)
             ->get()
             ->groupBy('devolucion_venta_id');
 
-        // Mapear devoluciones con detalles y numerar
         $devoluciones = $devoluciones->map(function ($item, $index) use ($detallesDevoluciones) {
             $item->nro = $index + 1;
             $item->detalles = $detallesDevoluciones->get($item->id, collect());
@@ -257,7 +257,6 @@ public function ventas(Request $request)
             ->join('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
             ->whereBetween('ventas.fecha', [$inicio, $fin]);
 
-        // Aplicar los mismos filtros de ventas
         if ($request->filled('tipo_cliente')) {
             $creditosQuery->where('ventas.tipo_cliente', $request->tipo_cliente);
         }
@@ -265,7 +264,6 @@ public function ventas(Request $request)
             $creditosQuery->where('ventas.metodo_pago_id', $request->metodo_pago_id);
         }
         if ($request->filled('estado')) {
-            // Si se filtra por estado, solo mostrar créditos de ventas en ese estado
             $creditosQuery->where('ventas.estado', $request->estado);
         }
 
@@ -421,9 +419,9 @@ public function compras(Request $request)
 }
 
 
-///////////////////////
-// REPORTE DE COMPRAS//
-//////////////////////
+//////////////////////////
+// REPORTE DE CREDITOS //
+/////////////////////////
 
 
 public function creditos(Request $request)
@@ -606,7 +604,7 @@ public function productosDaniados(Request $request)
 public function inventario(Request $request)
 {
     $request->validate([
-        'seccion'      => 'nullable|string|in:DESPENSA,LIBRERIA,MEDICAMENTO',
+        'seccion' => 'nullable|string|in:TIENDA,LIBRERIA,MEDICAMENTO',
         'marca_id'     => 'nullable|integer|exists:marcas,id',
         'categoria_id' => 'nullable|integer|exists:categorias,id',
         'estado'       => 'nullable|string|in:ACTIVO,INACTIVO',
