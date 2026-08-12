@@ -497,7 +497,7 @@ if($producto->perecedero == 'NORMAL'){
 
     // Venta (con método de pago y usuario)
     $venta = DB::table('ventas')
-                ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+                ->leftJoin('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
                 ->join('users', 'ventas.user_id', '=', 'users.id')
                 ->where('ventas.id', $id)
                 ->select('ventas.*', 'metodos_pagos.nombre as metodo_pago', 'users.name as vendedor')
@@ -520,11 +520,15 @@ if($producto->perecedero == 'NORMAL'){
                     ->groupBy('productos.id', 'productos.nombre')
                     ->get();
 
-    // Información del crédito (si existe)
+    // Información del crédito (si existe) – ahora incluye el DUI
     $credito = DB::table('creditos')
                     ->join('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
                     ->where('creditos.venta_id', $id)
-                    ->select('clientes_creditos.nombre as cliente', 'creditos.monto_adeudado')
+                    ->select(
+                        'clientes_creditos.nombre as cliente',
+                        'clientes_creditos.dui',
+                        'creditos.monto_adeudado'
+                    )
                     ->first();
 
     // Generar PDF

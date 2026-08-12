@@ -17,8 +17,8 @@
         .producto span { display: inline-block; }
         .precio { float: right; }
         .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 10px; }
-        .credito { margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; }
         .pago-efectivo { margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; }
+        .credito { margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; }
     </style>
 </head>
 <body>
@@ -33,7 +33,7 @@
     <div>Correlativo: {{ $venta->correlativo }}</div>
     <div>Fecha: {{ $venta->fecha }}</div>
     <div>Vendedor: {{ $venta->vendedor }}</div>
-    <div>Método: {{ $venta->metodo_pago }}</div>
+    <div>Método: {{ $venta->metodo_pago ?? 'Crédito (Fiado)' }}</div>
     <div>Tipo: {{ $venta->tipo_cliente }}</div>
 
     <div class="separator"></div>
@@ -60,10 +60,12 @@
     </div>
     @endif
 
-    @if ($credito)
+    @if ($venta->estado === 'CREDITO' && $credito)
         <div class="credito">
-            <strong>Crédito a:</strong> {{ $credito->cliente }}<br>
-            <strong>Monto adeudado:</strong> ${{ number_format($credito->monto_adeudado, 2) }}
+            <div><strong>VENTA AL CRÉDITO</strong></div>
+            <div>Cliente: {{ $credito->cliente }}</div>
+            <div>DUI: {{ $credito->dui }}</div>
+            <div>Monto adeudado: ${{ number_format($credito->monto_adeudado, 2) }}</div>
         </div>
     @endif
 
