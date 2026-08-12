@@ -16,28 +16,34 @@ class CategoriaController extends Controller
      * Display a listing of the resource.
      */
     public function index(Request $request)
-    {
-        try{
-            $query = Categoria::query();
+{
+    try {
+        $query = Categoria::query();
 
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where('nombre', 'ilike', "%{$search}%");
-            }
-            $query->orderBy('id', 'asc');
-
-            $perPage = $request->query('per_page', 5);
-            $categorias = $query->paginate($perPage);
-
-            return response()->json($categorias, 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error al obtener las categorías.',
-                'error' => $e->getMessage()
-            ], 500);
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where('nombre', 'ilike', "%{$search}%");
         }
 
+        // 🆕 Filtro por sección
+        if ($request->filled('seccion')) {
+            $query->where('seccion', $request->seccion);
+            $categorias = $query->orderBy('id', 'asc')->get();
+            return response()->json($categorias, 200);
+        }
+
+        $query->orderBy('id', 'asc');
+        $perPage = $request->query('per_page', 5);
+        $categorias = $query->paginate($perPage);
+
+        return response()->json($categorias, 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error al obtener las categorías.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Store a newly created resource in storage.

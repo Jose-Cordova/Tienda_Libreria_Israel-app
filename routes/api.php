@@ -106,4 +106,11 @@ Route::get('/reportes/historial',       [ReporteHistorialController::class, 'rep
 Route::get('/reportes/creditos', [ReporteCreditoController::class, 'reporteCreditos']);
 Route::get('/reportes/creditos-datos', [ReporteCreditoController::class, 'creditosDatos']);
 
-
+// Reportes
+Route::get('reportes/general', [ReporteController::class, 'general']);
+Route::get('reportes/ventas', [ReporteController::class, 'ventas']);
+Route::get('reportes/compras', [ReporteController::class, 'compras']);
+Route::get('reportes/creditos', [ReporteController::class, 'creditos']);
+Route::get('reportes/productos-daniados', [ReporteController::class, 'productosDaniados']);
+Route::get('reportes/inventario', [ReporteController::class, 'inventario']);
+Route::get('reportes/cierre-diario', [ReporteController::class, 'cierreDiario']);
