@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <style>
         body {
-            font-family: 'Courier New', monospace;
+            font-family: 'Sans-serif', monospace;
             font-size: 12px;
             margin: 0;
             padding: 0;
