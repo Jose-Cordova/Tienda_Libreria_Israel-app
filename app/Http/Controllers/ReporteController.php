@@ -116,6 +116,7 @@ class ReporteController extends Controller
 // REPORTE DE VENTAS//
 //////////////////////
 
+
 public function ventas(Request $request)
 {
     $request->validate([
@@ -129,7 +130,7 @@ public function ventas(Request $request)
     $inicio = $request->fecha_inicio;
     $fin    = $request->fecha_fin;
 
-    // --- Filtros activos para mostrar en el reporte ---
+    // Filtros activos
     $filtrosActivos = [];
     if ($request->filled('tipo_cliente')) {
         $filtrosActivos['Tipo de cliente'] = $request->tipo_cliente;
@@ -142,13 +143,14 @@ public function ventas(Request $request)
         $filtrosActivos['Estado'] = $request->estado;
     }
 
-    // Si se filtra por un estado específico, ocultar devoluciones y créditos
+    // Solo si hay filtro de estado mostramos detalles de las ventas y ocultamos devoluciones/créditos
+    $incluirDetalles = $request->filled('estado');
     $mostrarDevoluciones = !$request->filled('estado');
     $mostrarCreditos     = !$request->filled('estado');
 
     $config = Configuracion::first();
 
-    // --- 1. VENTAS con sus detalles ---
+    // --- 1. VENTAS ---
     $ventasQuery = DB::table('ventas')
         ->leftJoin('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
         ->whereBetween('ventas.fecha', [$inicio, $fin])
@@ -174,32 +176,40 @@ public function ventas(Request $request)
 
     $ventas = $ventasQuery->orderBy('ventas.fecha')->get();
 
-    // Detalles agrupados por venta
-    $ventaIds = $ventas->pluck('id');
-    $detallesVentas = DB::table('detalle_ventas')
-        ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
-        ->leftJoin('lotes', 'detalle_ventas.lote_id', '=', 'lotes.id')
-        ->whereIn('detalle_ventas.venta_id', $ventaIds)
-        ->select(
-            'detalle_ventas.venta_id',
-            'productos.nombre as producto',
-            'detalle_ventas.cantidad',
-            'detalle_ventas.precio_unitario',
-            'detalle_ventas.subtotal',
-            'lotes.codigo_lote'
-        )
-        ->orderBy('detalle_ventas.id')
-        ->get()
-        ->groupBy('venta_id');
+    // --- DETALLES (solo si se pide estado) ---
+    if ($incluirDetalles) {
+        $ventaIds = $ventas->pluck('id');
+        $detallesVentas = DB::table('detalle_ventas')
+            ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
+            ->leftJoin('lotes', 'detalle_ventas.lote_id', '=', 'lotes.id')
+            ->whereIn('detalle_ventas.venta_id', $ventaIds)
+            ->select(
+                'detalle_ventas.venta_id',
+                'productos.nombre as producto',
+                'detalle_ventas.cantidad',
+                'detalle_ventas.precio_unitario',
+                'detalle_ventas.subtotal',
+                'lotes.codigo_lote'
+            )
+            ->orderBy('detalle_ventas.id')
+            ->get()
+            ->groupBy('venta_id');
 
-    // Mapear ventas con detalles y numerar
-    $ventas = $ventas->map(function ($item, $index) use ($detallesVentas) {
-        $item->nro = $index + 1;
-        $item->detalles = $detallesVentas->get($item->id, collect());
-        return $item;
-    });
+        $ventas = $ventas->map(function ($item, $index) use ($detallesVentas) {
+            $item->nro = $index + 1;
+            $item->detalles = $detallesVentas->get($item->id, collect());
+            return $item;
+        });
+    } else {
+        // Sin detalles: solo numeración
+        $ventas = $ventas->map(function ($item, $index) {
+            $item->nro = $index + 1;
+            $item->detalles = collect();
+            return $item;
+        });
+    }
 
-    // --- 2. DEVOLUCIONES (con filtros heredados de ventas) ---
+    // --- 2. DEVOLUCIONES ---
     $devoluciones = collect();
     if ($mostrarDevoluciones) {
         $devolucionesQuery = DB::table('devoluciones_ventas')
@@ -249,7 +259,7 @@ public function ventas(Request $request)
         });
     }
 
-    // --- 3. CRÉDITOS (con filtros heredados de ventas) ---
+    // --- 3. CRÉDITOS ---
     $creditos = collect();
     if ($mostrarCreditos) {
         $creditosQuery = DB::table('creditos')
@@ -284,7 +294,7 @@ public function ventas(Request $request)
             });
     }
 
-    // --- 4. TOTALES para el resumen ---
+    // --- 4. TOTALES ---
     $totalVentas       = $ventas->sum('total');
     $totalDevoluciones = $devoluciones->sum('total');
     $totalPendiente    = $creditos->sum(function ($c) {
@@ -299,7 +309,7 @@ public function ventas(Request $request)
         'ventas', 'devoluciones', 'creditos',
         'totalVentas', 'totalDevoluciones', 'totalPendiente',
         'cantidadVentas', 'totalFinanciero', 'filtrosActivos',
-        'mostrarDevoluciones', 'mostrarCreditos'
+        'mostrarDevoluciones', 'mostrarCreditos', 'incluirDetalles'
     ));
 
     $pdf->getDomPDF()->set_option("isPhpEnabled", true);
@@ -700,9 +710,9 @@ public function inventario(Request $request)
 }
 
 
-/////////////////////////////////////
-// REPORTE DE PRODUCTOS(INVENTARIO)//
-/////////////////////////////////////
+///////////////////////////////
+// REPORTE DE CIERRE DIARIO)//
+//////////////////////////////
 
 
 public function cierreDiario(Request $request)

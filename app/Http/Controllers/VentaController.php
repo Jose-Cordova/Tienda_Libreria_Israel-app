@@ -292,16 +292,24 @@ if($producto->perecedero == 'NORMAL'){
     //si no existe cliente_credito lo registramos
     if(empty($data['cliente_credito_id'])){
 
-        $clienteCredito = ClienteCredito::create([
-            'nombre' => $data['nombre'],
-            'dui' => $data['dui'],
-            'telefono' => $data['telefono']
-        ]);
-
-    }else{
-
-        $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
+    // Validar el DUI antes de crear el cliente
+    if (!$this->validarDui($data['dui'])) {
+        DB::rollBack();
+        return response()->json([
+        'message' => 'El DUI ingresado ('.$data['dui'].') no es válido. Por favor, verifícalo.'
+    ], 422);
     }
+
+    $clienteCredito = ClienteCredito::create([
+        'nombre' => $data['nombre'],
+        'dui' => $data['dui'],
+        'telefono' => $data['telefono']
+    ]);
+
+}else{
+
+    $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
+}
 
     //Registramos Credito
     Credito::create([
@@ -341,6 +349,30 @@ if($producto->perecedero == 'NORMAL'){
 
     }
 }
+
+/**
+ * Valida un DUI de El Salvador (formato 12345678-9).
+ */
+private function validarDui($dui)
+{
+    // Formato: 8 dígitos, guion y 1 dígito
+    if (!preg_match('/^\d{8}-\d{1}$/', $dui)) {
+        return false;
+    }
+
+    $digitos = str_split(str_replace('-', '', $dui));
+    $factores = [9, 8, 7, 6, 5, 4, 3, 2];
+    $suma = 0;
+
+    for ($i = 0; $i < 8; $i++) {
+        $suma += (int)$digitos[$i] * $factores[$i];
+    }
+
+    $residuo = $suma % 10;
+    $digitoVerificador = (10 - $residuo) % 10; // Si el residuo es 0, el dígito será 0
+
+    return (int)$digitos[8] === $digitoVerificador;
+    }
 
     /**
      * Display the specified resource.
@@ -389,14 +421,6 @@ if($producto->perecedero == 'NORMAL'){
         'error' => $e->getMessage()
     ], 500);
 }
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
     }
 
     /**

@@ -292,7 +292,8 @@ class UserController extends Controller
                     'regex:/[A-Z]/',
                     'regex:/[a-z]/',
                     'regex:/[0-9]/',
-                    'regex:/[@$!%*?&]/'
+                    // Regla de validación para cualquier carácter especial
+                    'regex:/[^a-zA-Z0-9]/'
                 ]
             ]);
 

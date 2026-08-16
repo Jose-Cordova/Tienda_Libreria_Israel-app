@@ -1,6 +1,6 @@
 <style>
     @page {
-        margin: 100px 30px 60px 30px;
+    margin: 100px 2.5cm 60px 2.5cm;
     }
 
     body {
