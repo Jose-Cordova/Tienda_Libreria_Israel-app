@@ -8,7 +8,7 @@ class StoreVentaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        //Verificar si el usuario actual esta autorizado para hacer esta accion
+        //verificar si el usuario actual esta autorizado para hacer esta accion
         return auth()->check();
     }
 
