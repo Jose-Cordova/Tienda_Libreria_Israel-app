@@ -31,7 +31,7 @@
         </div>
     @endif
 
-    <!-- 1. VENTAS CON DETALLES -->
+    <!-- 1. VENTAS -->
     @if($ventas->isNotEmpty())
         <div class="seccion-titulo">VENTAS</div>
         @foreach($ventas as $v)
@@ -59,7 +59,9 @@
                     </tr>
                 </tbody>
             </table>
-            @if($v->detalles->isNotEmpty())
+
+            <!-- DETALLES: solo si $incluirDetalles es true -->
+            @if($incluirDetalles && $v->detalles->isNotEmpty())
             <table style="margin-top: -10px; margin-bottom: 15px; width: 95%; margin-left: 5%;">
                 <thead>
                     <tr>
@@ -86,7 +88,7 @@
         @endforeach
     @endif
 
-    <!-- 2. DEVOLUCIONES CON DETALLES (solo si no hay filtro de estado) -->
+    <!-- 2. DEVOLUCIONES -->
     @if($mostrarDevoluciones && $devoluciones->isNotEmpty())
         <div class="seccion-titulo">DEVOLUCIONES</div>
         @foreach($devoluciones as $d)
@@ -139,7 +141,7 @@
         @endforeach
     @endif
 
-    <!-- 3. CRÉDITOS (solo si no hay filtro de estado) -->
+    <!-- 3. CRÉDITOS -->
     @if($mostrarCreditos && $creditos->isNotEmpty())
         <div class="seccion-titulo">CRÉDITOS</div>
         <table>
