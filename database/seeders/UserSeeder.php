@@ -10,17 +10,22 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        // Buscar el rol de administrador para la API
         $adminRole = Role::where('name', 'ADMIN')
                         ->where('guard_name', 'api')
                         ->firstOrFail();
 
-        $admin = User::create([
-            'name'     => 'ADMINMASTER',
-            'email'    => 'adminmaster@gmail.com',
-            'password' => bcrypt('adminmaster123'),
-            'estado'   => 'ACTIVO',
-        ]);
+        // Crear o buscar el usuario administrador master
+        $admin = User::firstOrCreate(
+            ['email' => 'adminmaster@gmail.com'],
+            [
+                'name'     => 'ADMINMASTER',
+                'password' => bcrypt('adminmaster123'),
+                'estado'   => 'ACTIVO',
+            ]
+        );
 
-        $admin->assignRole($adminRole);
+        // Asignar y sincronizar el rol de administrador
+        $admin->syncRoles([$adminRole]);
     }
 }
