@@ -56,16 +56,28 @@ class AuthController extends Controller
     }
 
     protected function responseWithToken($token){
+        // Obtener el usuario autenticado y cargar sus roles asignados
+        $user = auth()->user();
+        if ($user) {
+            $user->load('roles');
+        }
+
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
-            'user' => auth()->user(),
+            'user' => $user,
             'expires_in' => auth()->factory()->getTTL() * 60
         ]);
     }
 
     public function me(){
-        return response()->json(auth()->user());
+        // Cargar los roles del usuario autenticado al consultar /auth/me
+        $user = auth()->user();
+        if ($user) {
+            $user->load('roles');
+        }
+
+        return response()->json($user);
     }
 
     //Método para invalidar un token (logout)
