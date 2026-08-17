@@ -355,7 +355,7 @@ if($producto->perecedero == 'NORMAL'){
  */
 private function validarDui($dui)
 {
-    // Formato: 8 dígitos, guion y 1 dígito
+    // Formato: 8 digitos, guion y 1 dígito
     if (!preg_match('/^\d{8}-\d{1}$/', $dui)) {
         return false;
     }
