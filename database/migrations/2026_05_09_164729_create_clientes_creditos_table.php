@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('clientes_creditos', function (Blueprint $table) {
             $table->id();
             $table->string('nombre', 50);
-            $table->string('dui', 10)->unique();
-            $table->string('telefono', 20);
+            $table->string('dui', 10)->unique()->nullable();
+            $table->string('telefono', 20)->nullable();
             $table->timestamps();
         });
     }

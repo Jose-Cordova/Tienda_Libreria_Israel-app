@@ -272,52 +272,46 @@ if($producto->perecedero == 'NORMAL'){
         //registramos credito si el estado de venta es credito
     if($data['estado'] == 'CREDITO'){
 
-    //validamos que exista cliente o datos para registrarlo
+    // Validar que exista cliente o datos para registrar uno nuevo
     if(
         empty($data['cliente_credito_id']) &&
-        (
-            empty($data['nombre']) ||
-            empty($data['dui']) ||
-            empty($data['telefono'])
-        )
+        empty($data['nombre'])
     ){
-
         DB::rollBack();
-
         return response()->json([
             'message' => 'Debe seleccionar un cliente crédito o registrar uno nuevo'
         ], 400);
     }
 
-    //si no existe cliente_credito lo registramos
+    // Si no existe cliente_credito, lo registramos
     if(empty($data['cliente_credito_id'])){
 
-    // Validar el DUI antes de crear el cliente
-    if (!$this->validarDui($data['dui'])) {
-        DB::rollBack();
-        return response()->json([
-        'message' => 'El DUI ingresado ('.$data['dui'].') no es válido. Por favor, verifícalo.'
-    ], 422);
+        // Si envían DUI, validarlo (no es obligatorio)
+        if (!empty($data['dui']) && !$this->validarDui($data['dui'])) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'El DUI ingresado ('.$data['dui'].') no es válido. Por favor, verifícalo.'
+            ], 422);
+        }
+
+        $clienteCredito = ClienteCredito::create([
+            'nombre'   => $data['nombre'],
+            'dui'      => $data['dui'] ?? null,
+            'telefono' => $data['telefono'] ?? null,
+        ]);
+
+    } else {
+
+        $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
     }
 
-    $clienteCredito = ClienteCredito::create([
-        'nombre' => $data['nombre'],
-        'dui' => $data['dui'],
-        'telefono' => $data['telefono']
-    ]);
-
-}else{
-
-    $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
-}
-
-    //Registramos Credito
+    // Registramos Crédito
     Credito::create([
-        'monto_adeudado' => $totalVenta,
-        'saldo' => 0,
-        'fecha_cancelada' => null,
-        'cliente_credito_id' => $clienteCredito->id,
-        'venta_id' => $venta->id
+        'monto_adeudado'    => $totalVenta,
+        'saldo'             => 0,
+        'fecha_cancelada'   => null,
+        'cliente_credito_id'=> $clienteCredito->id,
+        'venta_id'          => $venta->id
     ]);
 }
 
@@ -355,7 +349,7 @@ if($producto->perecedero == 'NORMAL'){
  */
 private function validarDui($dui)
 {
-    // Formato: 8 dígitos, guion y 1 dígito
+    // Formato: 8 digitos, guion y 1 dígito
     if (!preg_match('/^\d{8}-\d{1}$/', $dui)) {
         return false;
     }
