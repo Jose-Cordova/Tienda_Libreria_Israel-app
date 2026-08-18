@@ -64,7 +64,12 @@
         <div class="credito">
             <div><strong>VENTA AL CRÉDITO</strong></div>
             <div>Cliente: {{ $credito->cliente }}</div>
-            <div>DUI: {{ $credito->dui }}</div>
+
+            {{-- Mostrar DUI solo si tiene valor --}}
+            @if(!empty($credito->dui))
+                <div>DUI: {{ $credito->dui }}</div>
+            @endif
+
             <div>Monto adeudado: ${{ number_format($credito->monto_adeudado, 2) }}</div>
         </div>
     @endif
