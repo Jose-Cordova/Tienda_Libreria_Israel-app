@@ -130,7 +130,7 @@ public function ventas(Request $request)
     $inicio = $request->fecha_inicio;
     $fin    = $request->fecha_fin;
 
-    // Filtros activos
+    // Filtros activos para mostrar en el PDF
     $filtrosActivos = [];
     if ($request->filled('tipo_cliente')) {
         $filtrosActivos['Tipo de cliente'] = $request->tipo_cliente;
@@ -143,14 +143,9 @@ public function ventas(Request $request)
         $filtrosActivos['Estado'] = $request->estado;
     }
 
-    // Solo si hay filtro de estado mostramos detalles de las ventas y ocultamos devoluciones/créditos
-    $incluirDetalles = $request->filled('estado');
-    $mostrarDevoluciones = !$request->filled('estado');
-    $mostrarCreditos     = !$request->filled('estado');
-
     $config = Configuracion::first();
 
-    // --- 1. VENTAS ---
+    // --- 1. OBTENER VENTAS (sin detalles) ---
     $ventasQuery = DB::table('ventas')
         ->leftJoin('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
         ->whereBetween('ventas.fecha', [$inicio, $fin])
@@ -172,144 +167,51 @@ public function ventas(Request $request)
     }
     if ($request->filled('estado')) {
         $ventasQuery->where('ventas.estado', $request->estado);
+    } else {
+        // Por defecto, excluir ventas ANULADA del reporte
+        $ventasQuery->where('ventas.estado', '!=', 'ANULADA');
     }
 
     $ventas = $ventasQuery->orderBy('ventas.fecha')->get();
 
-    // --- DETALLES (solo si se pide estado) ---
-    if ($incluirDetalles) {
-        $ventaIds = $ventas->pluck('id');
-        $detallesVentas = DB::table('detalle_ventas')
-            ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
-            ->leftJoin('lotes', 'detalle_ventas.lote_id', '=', 'lotes.id')
-            ->whereIn('detalle_ventas.venta_id', $ventaIds)
-            ->select(
-                'detalle_ventas.venta_id',
-                'productos.nombre as producto',
-                'detalle_ventas.cantidad',
-                'detalle_ventas.precio_unitario',
-                'detalle_ventas.subtotal',
-                'lotes.codigo_lote'
-            )
-            ->orderBy('detalle_ventas.id')
-            ->get()
-            ->groupBy('venta_id');
-
-        $ventas = $ventas->map(function ($item, $index) use ($detallesVentas) {
-            $item->nro = $index + 1;
-            $item->detalles = $detallesVentas->get($item->id, collect());
-            return $item;
-        });
-    } else {
-        // Sin detalles: solo numeración
-        $ventas = $ventas->map(function ($item, $index) {
-            $item->nro = $index + 1;
-            $item->detalles = collect();
-            return $item;
-        });
-    }
-
-    // --- 2. DEVOLUCIONES ---
-    $devoluciones = collect();
-    if ($mostrarDevoluciones) {
-        $devolucionesQuery = DB::table('devoluciones_ventas')
-            ->join('ventas', 'devoluciones_ventas.venta_id', '=', 'ventas.id')
-            ->where('devoluciones_ventas.estado', 'DEVUELTA')
-            ->whereBetween('devoluciones_ventas.fecha', [$inicio, $fin]);
-
-        if ($request->filled('tipo_cliente')) {
-            $devolucionesQuery->where('ventas.tipo_cliente', $request->tipo_cliente);
-        }
-        if ($request->filled('metodo_pago_id')) {
-            $devolucionesQuery->where('ventas.metodo_pago_id', $request->metodo_pago_id);
-        }
-
-        $devoluciones = $devolucionesQuery
-            ->select(
-                'devoluciones_ventas.id', 'devoluciones_ventas.fecha', 'devoluciones_ventas.total',
-                'devoluciones_ventas.motivo',
-                'ventas.correlativo as venta_correlativo'
-            )
-            ->orderBy('devoluciones_ventas.fecha')
-            ->get();
-
-        $devolucionIds = $devoluciones->pluck('id');
-        $detallesDevoluciones = DB::table('detalle_devoluciones_ventas')
-            ->join('productos', 'detalle_devoluciones_ventas.producto_id', '=', 'productos.id')
-            ->join('detalle_ventas', 'detalle_devoluciones_ventas.detalle_venta_id', '=', 'detalle_ventas.id')
-            ->leftJoin('lotes', 'detalle_ventas.lote_id', '=', 'lotes.id')
-            ->whereIn('detalle_devoluciones_ventas.devolucion_venta_id', $devolucionIds)
-            ->select(
-                'detalle_devoluciones_ventas.devolucion_venta_id',
-                'productos.nombre as producto',
-                'detalle_devoluciones_ventas.cantidad',
-                'detalle_devoluciones_ventas.condicion',
-                'detalle_devoluciones_ventas.precio_unitario',
-                'detalle_devoluciones_ventas.subtotal',
-                'lotes.codigo_lote'
-            )
-            ->orderBy('detalle_devoluciones_ventas.id')
-            ->get()
-            ->groupBy('devolucion_venta_id');
-
-        $devoluciones = $devoluciones->map(function ($item, $index) use ($detallesDevoluciones) {
-            $item->nro = $index + 1;
-            $item->detalles = $detallesDevoluciones->get($item->id, collect());
-            return $item;
-        });
-    }
-
-    // --- 3. CRÉDITOS ---
-    $creditos = collect();
-    if ($mostrarCreditos) {
-        $creditosQuery = DB::table('creditos')
-            ->join('ventas', 'creditos.venta_id', '=', 'ventas.id')
-            ->join('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
-            ->whereBetween('ventas.fecha', [$inicio, $fin]);
-
-        if ($request->filled('tipo_cliente')) {
-            $creditosQuery->where('ventas.tipo_cliente', $request->tipo_cliente);
-        }
-        if ($request->filled('metodo_pago_id')) {
-            $creditosQuery->where('ventas.metodo_pago_id', $request->metodo_pago_id);
-        }
-        if ($request->filled('estado')) {
-            $creditosQuery->where('ventas.estado', $request->estado);
-        }
-
-        $creditos = $creditosQuery
-            ->select(
-                'ventas.correlativo',
-                'clientes_creditos.nombre as cliente',
-                'clientes_creditos.dui',
-                'creditos.monto_adeudado',
-                'creditos.saldo',
-                'creditos.estado as estado_credito'
-            )
-            ->orderBy('ventas.correlativo')
-            ->get()
-            ->map(function ($item, $index) {
-                $item->nro = $index + 1;
-                return $item;
-            });
-    }
-
-    // --- 4. TOTALES ---
-    $totalVentas       = $ventas->sum('total');
-    $totalDevoluciones = $devoluciones->sum('total');
-    $totalPendiente    = $creditos->sum(function ($c) {
-        return $c->monto_adeudado - $c->saldo;
+    // Numeración correlativa para la tabla
+    $ventas = $ventas->map(function ($item, $index) {
+        $item->nro = $index + 1;
+        return $item;
     });
-    $cantidadVentas    = $ventas->count();
-    $totalFinanciero   = $totalVentas - $totalDevoluciones;
 
-    // --- 5. GENERAR PDF ---
+    // --- 2. CALCULAR TOTAL DE VENTAS (excluye ANULADA porque ya no están) ---
+    $totalVentas = (float) $ventas->sum('total');
+
+    // --- 3. CALCULAR TOTAL DE DEVOLUCIONES asociadas a las ventas mostradas ---
+    $idsVentas = $ventas->pluck('id');
+    $totalDevoluciones = 0;
+    if ($idsVentas->isNotEmpty()) {
+        $totalDevoluciones = (float) DB::table('devoluciones_ventas')
+            ->whereIn('venta_id', $idsVentas)
+            ->where('devoluciones_ventas.estado', 'DEVUELTA')
+            ->sum('devoluciones_ventas.total');
+    }
+
+    // --- 4. CALCULAR DINERO PENDIENTE EN CRÉDITOS (solo para ventas CREDITO mostradas) ---
+    $idsVentasCredito = $ventas->where('estado', 'CREDITO')->pluck('id');
+    $totalPendiente = 0;
+    if ($idsVentasCredito->isNotEmpty()) {
+        $totalPendiente = (float) DB::table('creditos')
+            ->whereIn('creditos.venta_id', $idsVentasCredito)
+            ->selectRaw('SUM(creditos.monto_adeudado - creditos.saldo) as pendiente')
+            ->value('pendiente');
+    }
+
+    // --- 5. TOTALES FINALES ---
+    $cantidadVentas = $ventas->count();
+    $totalFinanciero = $totalVentas - $totalDevoluciones;
+
+    // --- 6. GENERAR PDF ---
     $pdf = Pdf::loadView('reportes.Ventas', compact(
         'config', 'inicio', 'fin',
-        'ventas', 'devoluciones', 'creditos',
-        'totalVentas', 'totalDevoluciones', 'totalPendiente',
-        'cantidadVentas', 'totalFinanciero', 'filtrosActivos',
-        'mostrarDevoluciones', 'mostrarCreditos', 'incluirDetalles'
+        'ventas', 'totalVentas', 'totalDevoluciones', 'totalPendiente',
+        'cantidadVentas', 'totalFinanciero', 'filtrosActivos'
     ));
 
     $pdf->getDomPDF()->set_option("isPhpEnabled", true);
