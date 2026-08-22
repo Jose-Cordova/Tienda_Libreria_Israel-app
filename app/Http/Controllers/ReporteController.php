@@ -613,7 +613,7 @@ public function inventario(Request $request)
 
 
 ///////////////////////////////
-// REPORTE DE CIERRE DIARIO)//
+// REPORTE DE CIERRE DIARIO //
 //////////////////////////////
 
 
@@ -629,9 +629,15 @@ public function cierreDiario(Request $request)
     // --- 1. Ventas en efectivo ---
     $efectivo = DB::table('ventas')
         ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+        ->leftJoin('users', 'ventas.user_id', '=', 'users.id')
         ->whereDate('ventas.fecha', $fecha)
         ->where('metodos_pagos.nombre', 'EFECTIVO')
-        ->select('ventas.correlativo', 'ventas.fecha', 'ventas.total')
+        ->select(
+            'ventas.correlativo',
+            'ventas.fecha',
+            'ventas.total',
+            DB::raw("COALESCE(users.name, 'Sin vendedor') as vendedor")
+        )
         ->orderBy('ventas.fecha')
         ->get()
         ->map(function ($item, $index) {
@@ -643,9 +649,15 @@ public function cierreDiario(Request $request)
     // --- 2. Ventas por transferencia ---
     $transferencia = DB::table('ventas')
         ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+        ->leftJoin('users', 'ventas.user_id', '=', 'users.id')
         ->whereDate('ventas.fecha', $fecha)
         ->where('metodos_pagos.nombre', 'TRANSFERENCIA')
-        ->select('ventas.correlativo', 'ventas.fecha', 'ventas.total')
+        ->select(
+            'ventas.correlativo',
+            'ventas.fecha',
+            'ventas.total',
+            DB::raw("COALESCE(users.name, 'Sin vendedor') as vendedor")
+        )
         ->orderBy('ventas.fecha')
         ->get()
         ->map(function ($item, $index) {
@@ -658,6 +670,7 @@ public function cierreDiario(Request $request)
     $credito = DB::table('ventas')
         ->leftJoin('creditos', 'ventas.id', '=', 'creditos.venta_id')
         ->leftJoin('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
+        ->leftJoin('users', 'ventas.user_id', '=', 'users.id')
         ->whereDate('ventas.fecha', $fecha)
         ->where('ventas.estado', 'CREDITO')
         ->select(
@@ -665,7 +678,8 @@ public function cierreDiario(Request $request)
             'ventas.fecha',
             'ventas.total',
             'clientes_creditos.nombre as cliente',
-            'creditos.monto_adeudado'
+            'creditos.monto_adeudado',
+            DB::raw("COALESCE(users.name, 'Sin vendedor') as vendedor")
         )
         ->orderBy('ventas.fecha')
         ->get()
@@ -675,7 +689,7 @@ public function cierreDiario(Request $request)
             return $item;
         });
 
-    // --- 4. Devoluciones del día ---
+    // --- 4. Devoluciones del día (sin cambios) ---
     $devoluciones = DB::table('devoluciones_ventas')
         ->join('ventas', 'devoluciones_ventas.venta_id', '=', 'ventas.id')
         ->where('devoluciones_ventas.estado', 'DEVUELTA')
