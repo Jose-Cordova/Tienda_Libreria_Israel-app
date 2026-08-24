@@ -22,7 +22,7 @@ return new class extends Migration
             $table->enum('origen', ['DIRECTO', 'VENCIMIENTO', 'VENTA', 'PROVEEDOR'])->default('DIRECTO');
 
             // Estado del flujo de reclamación al proveedor
-            $table->enum('estado_reclamacion', ['REGISTRADO', 'PENDIENTE', 'ACEPTADO', 'RECHAZADO', 'ANULADO'])->default('REGISTRADO');
+            $table->enum('estado_reclamacion', ['REGISTRADO', 'RECHAZADO', 'ANULADO'])->default('REGISTRADO');
 
             // Tipo de reemplazo cuando el proveedor acepta
             $table->enum('reemplazo', ['MISMO_VALOR', 'REPOSICION'])->nullable();
