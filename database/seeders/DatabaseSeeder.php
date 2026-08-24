@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             ConfiguracionSeeder::class,
+            MetodoPagoSeeder::class,
         ]);
     }
 }
