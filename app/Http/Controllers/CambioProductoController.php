@@ -312,7 +312,6 @@ class CambioProductoController extends Controller
                 ], 400);
             }
 
-            $producto = $registro->producto;
             $cantidad = $registro->cantidad;
 
             $registro->update([

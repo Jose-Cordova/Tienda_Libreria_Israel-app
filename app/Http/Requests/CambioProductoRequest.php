@@ -45,7 +45,6 @@ class CambioProductoRequest extends FormRequest
     protected function reglasAceptar(): array
     {
         $registro = \App\Models\CambioProducto::find($this->route('id'));
-        $esPerecedero = $registro?->producto?->perecedero === 'PERECEDERO';
 
         $rules = [
             'tipo'                  => 'required|in:mismo,diferente',
