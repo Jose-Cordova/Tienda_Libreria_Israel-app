@@ -24,9 +24,9 @@ class ProductoRequest extends FormRequest
         'precio_detalle'   => 'required|numeric|min:0.01',
         'precio_mayor'     => 'required|numeric|min:0.01',
         'stock_minimo'     => 'required|integer|min:1',
-        'perecedero'       => 'required|in:NORMAL,PERECEDERO',
+        'perecedero'       => $isUpdate ? 'sometimes|in:NORMAL,PERECEDERO' : 'required|in:NORMAL,PERECEDERO',
         'marca_id'         => ['required', 'exists:marcas,id'],
-    'categoria_id'     => ['required', 'exists:categorias,id'],
+        'categoria_id'     => ['required', 'exists:categorias,id'],
         // para seccion: en creación es obligatorio, en update es opcional
         'seccion'           => $isUpdate ? 'sometimes|in:TIENDA,LIBRERIA,MEDICAMENTO' : 'required|in:TIENDA,LIBRERIA,MEDICAMENTO',
 

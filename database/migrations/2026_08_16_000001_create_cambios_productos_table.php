@@ -8,37 +8,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('productos_daniados', function (Blueprint $table) {
+        Schema::create('cambios_productos', function (Blueprint $table) {
             $table->id();
             $table->string('descripcion', 255);
             $table->integer('cantidad');
             $table->date('fecha');
             $table->decimal('costo_unitario', 12, 2);
             $table->decimal('total_perdida', 12, 2);
-            // Tipo de registro (daño interno o devolución de venta)
-            $table->enum('estado', ['DEVOLUCION', 'DANIADO'])->default('DANIADO');
-
-            // Origen del registro: de dónde viene la pérdida
-            $table->enum('origen', ['DIRECTO', 'VENCIMIENTO', 'VENTA', 'PROVEEDOR'])->default('DIRECTO');
-
-            // Estado del flujo de reclamación al proveedor
-            $table->enum('estado_reclamacion', ['REGISTRADO', 'PENDIENTE', 'ACEPTADO', 'RECHAZADO', 'ANULADO'])->default('REGISTRADO');
-
-            // Tipo de reemplazo cuando el proveedor acepta
-            $table->enum('reemplazo', ['MISMO_VALOR', 'REPOSICION'])->nullable();
-
+            $table->enum('estado_reclamacion', ['PENDIENTE', 'ACEPTADO', 'RECHAZADO', 'ANULADO'])->default('PENDIENTE');
+            $table->string('reemplazo', 50)->nullable();
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
-
+            $table->unsignedBigInteger('producto_reemplazo_id')->nullable();
+            $table->foreign('producto_reemplazo_id')->references('id')->on('productos')->nullOnDelete();
             $table->unsignedBigInteger('lote_id')->nullable();
             $table->foreign('lote_id')->references('id')->on('lotes')->nullOnDelete();
-
             $table->timestamps();
         });
     }
+
     public function down(): void
     {
-        Schema::dropIfExists('productos_daniados');
+        Schema::dropIfExists('cambios_productos');
     }
-
 };

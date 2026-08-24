@@ -56,7 +56,12 @@ class ProductoController extends Controller
             $query->where('marca_id', $request->marca_id);
         }
 
-        $productos=$query->orderBy('id','desc')->paginate(10);
+        if ($request->boolean('sin_paginar')) {
+            $productos = $query->orderBy('id', 'desc')->get();
+        } else {
+            $perPage = min((int) $request->get('per_page', 10), 200);
+            $productos = $query->orderBy('id', 'desc')->paginate($perPage);
+        }
 
 
         return response()->json($productos, 200);

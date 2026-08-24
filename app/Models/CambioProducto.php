@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ProductoDaniado extends Model
+class CambioProducto extends Model
 {
-    protected $table = 'productos_daniados';
+    protected $table = 'cambios_productos';
 
     protected $fillable = [
         'descripcion',
@@ -14,11 +14,10 @@ class ProductoDaniado extends Model
         'fecha',
         'costo_unitario',
         'total_perdida',
-        'estado',
-        'origen',
         'estado_reclamacion',
         'reemplazo',
         'producto_id',
+        'producto_reemplazo_id',
         'lote_id',
     ];
 
@@ -33,13 +32,13 @@ class ProductoDaniado extends Model
         return $this->belongsTo(Producto::class);
     }
 
+    public function productoReemplazo()
+    {
+        return $this->belongsTo(Producto::class, 'producto_reemplazo_id');
+    }
+
     public function lote()
     {
         return $this->belongsTo(Lote::class);
-    }
-
-    public function detalleDevolucionVenta()
-    {
-        return $this->hasOne(DetalleDevolucionVenta::class);
     }
 }
