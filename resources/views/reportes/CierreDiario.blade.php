@@ -27,9 +27,10 @@
         <table>
             <thead>
                 <tr>
-                    <th>N°</th>
+                    <th class="text-center">N°</th>
                     <th>Correlativo</th>
                     <th>Hora</th>
+                    <th>Vendedor</th>
                     <th class="text-right">Total</th>
                 </tr>
             </thead>
@@ -39,6 +40,7 @@
                     <td class="text-center">{{ $e->nro }}</td>
                     <td>{{ $e->correlativo }}</td>
                     <td>{{ $e->hora }}</td>
+                    <td>{{ $e->vendedor }}</td>
                     <td class="text-right">${{ number_format($e->total, 2) }}</td>
                 </tr>
                 @endforeach
@@ -52,9 +54,10 @@
         <table>
             <thead>
                 <tr>
-                    <th>N°</th>
+                    <th class="text-center">N°</th>
                     <th>Correlativo</th>
                     <th>Hora</th>
+                    <th>Vendedor</th>
                     <th class="text-right">Total</th>
                 </tr>
             </thead>
@@ -64,6 +67,7 @@
                     <td class="text-center">{{ $t->nro }}</td>
                     <td>{{ $t->correlativo }}</td>
                     <td>{{ $t->hora }}</td>
+                    <td>{{ $t->vendedor }}</td>
                     <td class="text-right">${{ number_format($t->total, 2) }}</td>
                 </tr>
                 @endforeach
@@ -77,9 +81,10 @@
         <table>
             <thead>
                 <tr>
-                    <th>N°</th>
+                    <th class="text-center">N°</th>
                     <th>Correlativo</th>
                     <th>Hora</th>
+                    <th>Vendedor</th>
                     <th>Cliente</th>
                     <th class="text-right">Monto Adeudado</th>
                 </tr>
@@ -90,6 +95,7 @@
                     <td class="text-center">{{ $c->nro }}</td>
                     <td>{{ $c->correlativo }}</td>
                     <td>{{ $c->hora }}</td>
+                    <td>{{ $c->vendedor }}</td>
                     <td>{{ $c->cliente ?? 'N/A' }}</td>
                     <td class="text-right">${{ number_format($c->monto_adeudado ?? $c->total, 2) }}</td>
                 </tr>
@@ -104,7 +110,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>N°</th>
+                    <th class="text-center">N°</th>
                     <th>Venta</th>
                     <th>Motivo</th>
                     <th class="text-right">Total</th>
