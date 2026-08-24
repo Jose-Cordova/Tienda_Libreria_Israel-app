@@ -142,13 +142,15 @@ class DevolucionVentaController extends Controller
             } elseif ($item['condicion'] === 'DANIADO') {
                 // Crear registro en ProductoDaniado
                 $productoDaniado = ProductoDaniado::create([
-                    'descripcion'    => $item['descripcion'],
-                    'cantidad'       => $cantidad,
-                    'fecha'          => now(),
-                    'costo_unitario' => $precioUnitario,
-                    'total_perdida'  => $subtotal,
-                    'estado'         => 'DEVOLUCION',
-                    'producto_id'    => $detalleVenta->producto_id,
+                    'descripcion'        => $item['descripcion'],
+                    'cantidad'           => $cantidad,
+                    'fecha'              => now(),
+                    'costo_unitario'     => $precioUnitario,
+                    'total_perdida'      => $subtotal,
+                    'estado'             => 'DEVOLUCION',
+                    'origen'             => 'VENTA',
+                    'estado_reclamacion' => 'REGISTRADO',
+                    'producto_id'        => $detalleVenta->producto_id,
                 ]);
 
                 // Asignar el ID al detalle de devolución

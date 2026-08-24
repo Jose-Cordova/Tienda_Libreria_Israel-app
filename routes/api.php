@@ -23,8 +23,9 @@ use App\Http\Controllers\CreditoController;
 use App\Http\Controllers\DevolucionVentaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ForgotPasswordController;
-use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ProductoDaniadoController;
+use App\Http\Controllers\CambioProductoController;
+use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\CronogramaProveedorController;
 use App\Http\Controllers\NotaController;
 
@@ -72,10 +73,13 @@ Route::middleware(['auth:api'])->group(function(){
 
         // Devoluciones y productos dañados
         Route::apiResource('devoluciones-ventas', DevolucionVentaController::class);
+        Route::get('productos-daniados/lotes-vencidos', [ProductoDaniadoController::class, 'lotesVencidos']);
         Route::apiResource('productos-daniados', ProductoDaniadoController::class);
         Route::post('productos-daniados/{id}/anular', [ProductoDaniadoController::class, 'anular']);
-        Route::post('productos-daniados/{id}/aceptar', [ProductoDaniadoController::class, 'aceptar']);
-        Route::post('productos-daniados/{id}/rechazar', [ProductoDaniadoController::class, 'rechazar']);
+        Route::apiResource('cambios-productos', CambioProductoController::class);
+        Route::post('cambios-productos/{id}/anular', [CambioProductoController::class, 'anular']);
+        Route::post('cambios-productos/{id}/aceptar', [CambioProductoController::class, 'aceptar']);
+        Route::post('cambios-productos/{id}/rechazar', [CambioProductoController::class, 'rechazar']);
 
         // Consulta de categorías y marcas para filtros de productos
         Route::apiResource('categorias', CategoriaController::class)->only(['index', 'show']);
