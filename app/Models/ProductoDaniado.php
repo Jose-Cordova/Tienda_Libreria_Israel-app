@@ -14,10 +14,8 @@ class ProductoDaniado extends Model
         'fecha',
         'costo_unitario',
         'total_perdida',
-        'estado',
         'origen',
-        'estado_reclamacion',
-        'reemplazo',
+        'estado',
         'producto_id',
         'lote_id',
     ];

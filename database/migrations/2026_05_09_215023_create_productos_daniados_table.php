@@ -15,8 +15,6 @@ return new class extends Migration
             $table->date('fecha');
             $table->decimal('costo_unitario', 12, 2);
             $table->decimal('total_perdida', 12, 2);
-            // Tipo de registro (daño interno o devolución de venta)
-            $table->enum('estado', ['DEVOLUCION', 'DANIADO'])->default('DANIADO');
 
             // Origen del registro: de dónde viene la pérdida
             $table->enum('origen', ['DIRECTO', 'VENCIMIENTO', 'VENTA', 'PROVEEDOR'])->default('DIRECTO');
