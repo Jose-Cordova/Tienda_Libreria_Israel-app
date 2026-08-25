@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 
-//Controladores
+//controladores
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteCreditoController;
 use App\Http\Controllers\MarcaController;
