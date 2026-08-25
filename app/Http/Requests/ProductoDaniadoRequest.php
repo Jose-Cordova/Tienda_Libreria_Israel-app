@@ -26,8 +26,7 @@ class ProductoDaniadoRequest extends FormRequest
         return [
             'per_page'           => 'nullable|integer|min:1|max:100',
             'origen'             => 'nullable|in:DIRECTO,VENCIMIENTO,VENTA',
-            'estado_reclamacion' => 'nullable|in:REGISTRADO,ANULADO',
-            'estado'             => 'nullable|in:DANIADO,DEVOLUCION',
+            'estado'             => 'nullable|in:REGISTRADO,RECHAZADO,DEVOLUCION,ANULADO',
             'fecha_inicio'       => 'nullable|date',
             'fecha_fin'          => 'nullable|date|after_or_equal:fecha_inicio',
             'buscar'             => 'nullable|string',
