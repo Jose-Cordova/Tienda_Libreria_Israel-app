@@ -14,7 +14,7 @@ class CambioProducto extends Model
         'fecha',
         'costo_unitario',
         'total_perdida',
-        'estado_reclamacion',
+        'estado',
         'reemplazo',
         'producto_id',
         'producto_reemplazo_id',

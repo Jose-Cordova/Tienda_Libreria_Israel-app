@@ -25,7 +25,7 @@ class CambioProductoRequest extends FormRequest
     {
         return [
             'per_page'           => 'nullable|integer|min:1|max:100',
-            'estado_reclamacion' => 'nullable|in:PENDIENTE,ACEPTADO,RECHAZADO,ANULADO',
+            'estado'             => 'nullable|in:PENDIENTE,ACEPTADO,RECHAZADO,ANULADO',
             'fecha_inicio'       => 'nullable|date',
             'fecha_fin'          => 'nullable|date|after_or_equal:fecha_inicio',
             'buscar'             => 'nullable|string',

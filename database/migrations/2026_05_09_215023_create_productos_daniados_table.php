@@ -20,7 +20,7 @@ return new class extends Migration
             $table->enum('origen', ['DIRECTO', 'VENCIMIENTO', 'VENTA', 'PROVEEDOR'])->default('DIRECTO');
 
             // Estado del flujo de reclamación al proveedor
-            $table->enum('estado_reclamacion', ['REGISTRADO', 'RECHAZADO', 'ANULADO'])->default('REGISTRADO');
+            $table->enum('estado', ['REGISTRADO', 'RECHAZADO', 'DEVOLUCION', 'ANULADO'])->default('REGISTRADO');
 
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');
