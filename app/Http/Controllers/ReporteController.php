@@ -796,7 +796,7 @@ public function cambioProducto(Request $request)
             'cambios_productos.cantidad',
             'cambios_productos.costo_unitario',
             'cambios_productos.total_perdida',
-            'cambios_productos.estado_reclamacion',
+            'cambios_productos.estado', // ✅ ahora se llama estado
             'lotes.codigo_lote as lote',
             'pr.nombre as producto_reemplazo',
             DB::raw("CAST(CASE WHEN cambios_productos.producto_reemplazo_id IS NOT NULL THEN 1 ELSE 0 END AS INTEGER) as tiene_reemplazo")
@@ -804,7 +804,7 @@ public function cambioProducto(Request $request)
         ->orderBy('cambios_productos.fecha');
 
     if ($request->filled('estado')) {
-        $cambiosQuery->where('cambios_productos.estado_reclamacion', $request->estado);
+        $cambiosQuery->where('cambios_productos.estado', $request->estado); // ✅ estado
     }
 
     $cambios = $cambiosQuery->get()->map(function ($item, $index) {
@@ -812,7 +812,7 @@ public function cambioProducto(Request $request)
         return $item;
     });
 
-    $agrupados = $cambios->groupBy('estado_reclamacion')->map(function ($grupoEstado) {
+    $agrupados = $cambios->groupBy('estado')->map(function ($grupoEstado) { // ✅ estado
         return $grupoEstado->groupBy(function ($item) {
             return (int) $item->tiene_reemplazo;
         });
@@ -821,15 +821,15 @@ public function cambioProducto(Request $request)
     $totales = [
         'cantidadTotal'          => $cambios->count(),
         'totalCantidad'          => $cambios->sum('cantidad'),
-        'cantidadConReemplazo'   => $cambios->where('tiene_reemplazo', 1)->sum('cantidad'), // ✅ sum, no count
+        'cantidadConReemplazo'   => $cambios->where('tiene_reemplazo', 1)->sum('cantidad'),
         'cantidadSinReemplazo'   => $cambios->where('tiene_reemplazo', 0)->count(),
-        'totalPerdida'           => $cambios->where('estado_reclamacion', 'RECHAZADO')->sum('total_perdida'),
-        'cantidadPendientes'     => $cambios->where('estado_reclamacion', 'PENDIENTE')->count(),
-        'totalPendienteCantidad' => $cambios->where('estado_reclamacion', 'PENDIENTE')->sum('cantidad'),
-        'totalPendienteCosto'    => $cambios->where('estado_reclamacion', 'PENDIENTE')->sum('total_perdida'),
-        'cantidadAceptados'      => $cambios->where('estado_reclamacion', 'ACEPTADO')->count(),
-        'cantidadRechazados'     => $cambios->where('estado_reclamacion', 'RECHAZADO')->count(),
-        'cantidadAnulados'       => $cambios->where('estado_reclamacion', 'ANULADO')->count(),
+        'totalPerdida'           => $cambios->where('estado', 'RECHAZADO')->sum('total_perdida'), // ✅ estado
+        'cantidadPendientes'     => $cambios->where('estado', 'PENDIENTE')->count(), // ✅ estado
+        'totalPendienteCantidad' => $cambios->where('estado', 'PENDIENTE')->sum('cantidad'),
+        'totalPendienteCosto'    => $cambios->where('estado', 'PENDIENTE')->sum('total_perdida'),
+        'cantidadAceptados'      => $cambios->where('estado', 'ACEPTADO')->count(), // ✅ estado
+        'cantidadRechazados'     => $cambios->where('estado', 'RECHAZADO')->count(),
+        'cantidadAnulados'       => $cambios->where('estado', 'ANULADO')->count(),
     ];
 
     $pdf = Pdf::loadView('reportes.CambioProducto', compact(
