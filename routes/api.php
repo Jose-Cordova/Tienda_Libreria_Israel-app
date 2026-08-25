@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 
-//Controladores
+//controladores
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteCreditoController;
 use App\Http\Controllers\MarcaController;
@@ -15,9 +15,6 @@ use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ReporteController;
-use App\Http\Controllers\ReporteHistorialController;
-use App\Http\Controllers\ReporteComprasController;
-use App\Http\Controllers\ReporteCreditoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CreditoController;
 use App\Http\Controllers\DevolucionVentaController;
@@ -123,17 +120,14 @@ Route::middleware(['auth:api'])->group(function(){
         Route::apiResource('configuracion', ConfiguracionController::class);
 
         // Reportes de la tienda
-        Route::get('/reportes/resumen', [ReporteController::class, 'resumenJson']);
-        Route::get('/reportes/general', [ReporteController::class, 'reporteGeneral']);
-        Route::get('/reportes/historial-datos', [ReporteHistorialController::class, 'historialDatos']);
-        Route::get('/reportes/historial', [ReporteHistorialController::class, 'reporteHistorial']);
-        Route::get('/reportes/compras', [ReporteComprasController::class, 'reporteCompras']);
-        Route::get('/reportes/compras-datos', [ReporteComprasController::class, 'comprasDatos']);
-        Route::get('/reportes/creditos', [ReporteCreditoController::class, 'reporteCreditos']);
-        Route::get('/reportes/creditos-datos', [ReporteCreditoController::class, 'creditosDatos']);
-        Route::get('reportes/ventas', [ReporteController::class, 'ventas']);
-        Route::get('reportes/productos-daniados', [ReporteController::class, 'productosDaniados']);
-        Route::get('reportes/inventario', [ReporteController::class, 'inventario']);
-        Route::get('reportes/cierre-diario', [ReporteController::class, 'cierreDiario']);
+        // Reportes de la tienda
+        Route::get('/reportes/general', [ReporteController::class, 'general']);
+        Route::get('/reportes/ventas', [ReporteController::class, 'ventas']);
+        Route::get('/reportes/compras', [ReporteController::class, 'compras']);
+        Route::get('/reportes/creditos', [ReporteController::class, 'creditos']);
+        Route::get('/reportes/productos-daniados', [ReporteController::class, 'productosDaniados']);
+        Route::get('/reportes/inventario', [ReporteController::class, 'inventario']);
+        Route::get('/reportes/cierre-diario', [ReporteController::class, 'cierreDiario']);
+        Route::get('/reportes/cambio-producto', [ReporteController::class, 'cambioProducto']);
     });
 });
