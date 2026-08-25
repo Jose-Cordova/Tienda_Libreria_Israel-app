@@ -881,7 +881,7 @@ public function devolucionesVentas(Request $request)
 
     $config = Configuracion::first();
 
-    // Consulta base de detalles de devolución
+    // consulta base de detalles de devolución
     $detallesQuery = DB::table('detalle_devoluciones_ventas')
         ->join('devoluciones_ventas', 'detalle_devoluciones_ventas.devolucion_venta_id', '=', 'devoluciones_ventas.id')
         ->join('ventas', 'devoluciones_ventas.venta_id', '=', 'ventas.id')
