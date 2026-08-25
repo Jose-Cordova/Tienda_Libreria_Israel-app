@@ -437,56 +437,73 @@ public function productosDaniados(Request $request)
     $request->validate([
         'fecha_inicio' => 'required|date',
         'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
-        'estado'       => 'nullable|string|in:DEVOLUCION,DANIADO',
+        'origen'       => 'nullable|string|in:VENTA,DIRECTO,VENCIMIENTO,PROVEEDOR',
+        'estado'       => 'nullable|string|in:REGISTRADO,RECHAZADO,DEVOLUCION,ANULADO',
     ]);
 
     $inicio = $request->fecha_inicio;
     $fin    = $request->fecha_fin;
 
-    // Filtros activos
     $filtrosActivos = [];
+    if ($request->filled('origen')) {
+        $filtrosActivos['Origen'] = match($request->origen) {
+            'VENTA' => 'Devolución',
+            'DIRECTO' => 'Manual',
+            'VENCIMIENTO' => 'Vencimiento',
+            'PROVEEDOR' => 'Proveedor',
+        };
+    }
     if ($request->filled('estado')) {
-        $filtrosActivos['Origen'] = $request->estado === 'DEVOLUCION' ? 'Devolución' : 'Manual';
+        $filtrosActivos['Estado'] = $request->estado;
     }
 
     $config = Configuracion::first();
 
-    // Consulta de productos dañados
     $daniadosQuery = DB::table('productos_daniados')
         ->join('productos', 'productos_daniados.producto_id', '=', 'productos.id')
+        ->leftJoin('lotes', 'productos_daniados.lote_id', '=', 'lotes.id')
         ->whereBetween('productos_daniados.fecha', [$inicio, $fin])
         ->select(
             'productos_daniados.id',
             'productos_daniados.fecha',
             'productos.nombre as producto',
-            'productos_daniados.descripcion',
             'productos_daniados.cantidad',
             'productos_daniados.costo_unitario',
             'productos_daniados.total_perdida',
-            'productos_daniados.estado'
+            'productos_daniados.origen',
+            'productos_daniados.estado',
+            'lotes.codigo_lote as lote'
         )
         ->orderBy('productos_daniados.fecha');
 
+    if ($request->filled('origen')) {
+        $daniadosQuery->where('productos_daniados.origen', $request->origen);
+    }
     if ($request->filled('estado')) {
         $daniadosQuery->where('productos_daniados.estado', $request->estado);
     }
 
     $daniados = $daniadosQuery->get()->map(function ($item, $index) {
         $item->nro = $index + 1;
-        $item->origen = $item->estado === 'DEVOLUCION' ? 'Devolución' : 'Manual';
+        $item->origen = match($item->origen) {
+            'VENTA' => 'Devolución',
+            'DIRECTO' => 'Manual',
+            'VENCIMIENTO' => 'Vencimiento',
+            'PROVEEDOR' => 'Proveedor',
+            default => 'Desconocido',
+        };
         return $item;
-    });
+    })->groupBy('origen');
 
-    // Totales
-    $totalPerdida     = $daniados->sum('total_perdida');
-    $totalCantidad    = $daniados->sum('cantidad');
-    $cantidadDaniados = $daniados->count();
+    $totales = [
+        'totalPerdida'     => $daniados->flatten(1)->sum('total_perdida'),
+        'totalCantidad'    => $daniados->flatten(1)->sum('cantidad'),
+        'cantidadDaniados' => $daniados->flatten(1)->count(),
+    ];
 
-    // Generar PDF
     $pdf = Pdf::loadView('reportes.ProductosDaniados', compact(
         'config', 'inicio', 'fin',
-        'daniados', 'totalPerdida', 'totalCantidad',
-        'cantidadDaniados', 'filtrosActivos'
+        'daniados', 'totales', 'filtrosActivos'
     ));
 
     $pdf->getDomPDF()->set_option("isPhpEnabled", true);
@@ -507,6 +524,7 @@ public function productosDaniados(Request $request)
 
     return $pdf->stream("reporte-productos-daniados-{$inicio}-{$fin}.pdf");
 }
+
 
 /////////////////////////////////////
 // REPORTE DE PRODUCTOS(INVENTARIO)//
@@ -746,4 +764,95 @@ public function cierreDiario(Request $request)
 //////////////////////////////////
 // REPORTE DE CAMBIO DE PRODUCTO//
 //////////////////////////////////
+
+
+public function cambioProducto(Request $request)
+{
+    $request->validate([
+        'fecha_inicio' => 'required|date',
+        'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
+        'estado'       => 'nullable|string|in:PENDIENTE,ACEPTADO,RECHAZADO,ANULADO',
+    ]);
+
+    $inicio = $request->fecha_inicio;
+    $fin    = $request->fecha_fin;
+
+    $filtrosActivos = [];
+    if ($request->filled('estado')) {
+        $filtrosActivos['Estado'] = $request->estado;
+    }
+
+    $config = Configuracion::first();
+
+    $cambiosQuery = DB::table('cambios_productos')
+        ->join('productos', 'cambios_productos.producto_id', '=', 'productos.id')
+        ->leftJoin('productos as pr', 'cambios_productos.producto_reemplazo_id', '=', 'pr.id')
+        ->leftJoin('lotes', 'cambios_productos.lote_id', '=', 'lotes.id')
+        ->whereBetween('cambios_productos.fecha', [$inicio, $fin])
+        ->select(
+            'cambios_productos.id',
+            'cambios_productos.fecha',
+            'productos.nombre as producto',
+            'cambios_productos.cantidad',
+            'cambios_productos.costo_unitario',
+            'cambios_productos.total_perdida',
+            'cambios_productos.estado_reclamacion',
+            'lotes.codigo_lote as lote',
+            'pr.nombre as producto_reemplazo',
+            DB::raw("CAST(CASE WHEN cambios_productos.producto_reemplazo_id IS NOT NULL THEN 1 ELSE 0 END AS INTEGER) as tiene_reemplazo")
+        )
+        ->orderBy('cambios_productos.fecha');
+
+    if ($request->filled('estado')) {
+        $cambiosQuery->where('cambios_productos.estado_reclamacion', $request->estado);
+    }
+
+    $cambios = $cambiosQuery->get()->map(function ($item, $index) {
+        $item->nro = $index + 1;
+        return $item;
+    });
+
+    $agrupados = $cambios->groupBy('estado_reclamacion')->map(function ($grupoEstado) {
+        return $grupoEstado->groupBy(function ($item) {
+            return (int) $item->tiene_reemplazo;
+        });
+    });
+
+    $totales = [
+        'cantidadTotal'          => $cambios->count(),
+        'totalCantidad'          => $cambios->sum('cantidad'),
+        'cantidadConReemplazo'   => $cambios->where('tiene_reemplazo', 1)->sum('cantidad'), // ✅ sum, no count
+        'cantidadSinReemplazo'   => $cambios->where('tiene_reemplazo', 0)->count(),
+        'totalPerdida'           => $cambios->where('estado_reclamacion', 'RECHAZADO')->sum('total_perdida'),
+        'cantidadPendientes'     => $cambios->where('estado_reclamacion', 'PENDIENTE')->count(),
+        'totalPendienteCantidad' => $cambios->where('estado_reclamacion', 'PENDIENTE')->sum('cantidad'),
+        'totalPendienteCosto'    => $cambios->where('estado_reclamacion', 'PENDIENTE')->sum('total_perdida'),
+        'cantidadAceptados'      => $cambios->where('estado_reclamacion', 'ACEPTADO')->count(),
+        'cantidadRechazados'     => $cambios->where('estado_reclamacion', 'RECHAZADO')->count(),
+        'cantidadAnulados'       => $cambios->where('estado_reclamacion', 'ANULADO')->count(),
+    ];
+
+    $pdf = Pdf::loadView('reportes.CambioProducto', compact(
+        'config', 'inicio', 'fin',
+        'agrupados', 'totales', 'filtrosActivos'
+    ));
+
+    $pdf->getDomPDF()->set_option("isPhpEnabled", true);
+    $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
+    $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+    $pdf->setPaper('A4', 'portrait');
+    $pdf->render();
+
+    $canvas = $pdf->getDomPDF()->getCanvas();
+    $canvas->page_text(
+        270,
+        $canvas->get_height() - 30,
+        "Página {PAGE_NUM} de {PAGE_COUNT}",
+        "DejaVu Sans",
+        9,
+        [0.5, 0.5, 0.5]
+    );
+
+    return $pdf->stream("reporte-cambio-producto-{$inicio}-{$fin}.pdf");
+}
 }
