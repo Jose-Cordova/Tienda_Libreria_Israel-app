@@ -21,44 +21,44 @@
     </table>
 
     @if(count($filtrosActivos) > 0)
-        <div style="font-size: 10px; color: #555; margin-bottom: 10px;">
-            Filtros aplicados:
-            @foreach($filtrosActivos as $nombre => $valor)
-                <strong>{{ $nombre }}:</strong> {{ $valor }}@if(!$loop->last) | @endif
-            @endforeach
-        </div>
+    <div style="font-size: 10px; color: #555; margin-bottom: 10px;">
+        Filtros aplicados:
+        @foreach($filtrosActivos as $nombre => $valor)
+        <strong>{{ $nombre }}:</strong> {{ $valor }}@if(!$loop->last) | @endif
+        @endforeach
+    </div>
     @endif
 
     @if($ventas->isNotEmpty())
-        <div class="seccion-titulo">VENTAS</div>
-        <table>
-            <thead>
-                <tr>
-                    <th class="text-center">N°</th>
-                    <th>Correlativo</th>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Método</th>
-                    <th>Estado</th>
-                    <th class="text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($ventas as $v)
-                <tr>
-                    <td class="text-center">{{ $v->nro }}</td>
-                    <td>{{ $v->correlativo }}</td>
-                    <td>{{ $v->fecha }}</td>
-                    <td>{{ $v->tipo_cliente }}</td>
-                    <td>{{ $v->metodo }}</td>
-                    <td>{{ $v->estado }}</td>
-                    <td class="text-right">${{ number_format($v->total, 2) }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+    <div class="seccion-titulo">VENTAS</div>
+    <table>
+        <thead>
+            <tr>
+                <th class="text-center">N°</th>
+                <th>Correlativo</th>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Método</th>
+                <th>Estado</th>
+                <th class="text-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($ventas as $v)
+            <tr>
+                <td class="text-center">{{ $v->nro }}</td>
+                <td>{{ $v->correlativo }}</td>
+                <td>{{ $v->fecha }}</td>
+                <td>{{ $v->tipo_cliente }}</td>
+                <td>{{ $v->metodo }}</td>
+                <td>{{ $v->estado }}</td>
+                <td class="text-right">${{ number_format($v->total, 2) }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
     @else
-        <p style="text-align:center; color:#888;">No se encontraron ventas para los filtros seleccionados.</p>
+    <p style="text-align:center; color:#888;">No se encontraron ventas para los filtros seleccionados.</p>
     @endif
 
     <table class="resumen-wrapper">
@@ -87,12 +87,14 @@
                                 <td class="text-right alerta">${{ number_format($totalPendiente, 2) }}</td>
                             </tr>
                             @endif
+                            @if($mostrarTotalFinanciero)
                             <tr class="total-final">
                                 <td><strong>TOTAL FINANCIERO</strong></td>
                                 <td class="text-right {{ $totalFinanciero >= 0 ? 'ganancia-positiva' : 'ganancia-negativa' }}">
                                     <strong>${{ number_format($totalFinanciero, 2) }}</strong>
                                 </td>
                             </tr>
+                            @endif
                         </table>
                     </div>
                 </td>

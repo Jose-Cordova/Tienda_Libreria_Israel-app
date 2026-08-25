@@ -206,14 +206,14 @@ public function ventas(Request $request)
     // --- 5. TOTALES FINALES ---
     $cantidadVentas = $ventas->count();
     $totalFinanciero = $totalVentas - $totalDevoluciones;
+    $mostrarTotalFinanciero = !$request->filled('estado') || $request->estado === 'PAGADA';
 
     // --- 6. GENERAR PDF ---
     $pdf = Pdf::loadView('reportes.Ventas', compact(
-        'config', 'inicio', 'fin',
-        'ventas', 'totalVentas', 'totalDevoluciones', 'totalPendiente',
-        'cantidadVentas', 'totalFinanciero', 'filtrosActivos'
+    'config', 'inicio', 'fin',
+    'ventas', 'totalVentas', 'totalDevoluciones', 'totalPendiente',
+    'cantidadVentas', 'totalFinanciero', 'filtrosActivos', 'mostrarTotalFinanciero'
     ));
-
     $pdf->getDomPDF()->set_option("isPhpEnabled", true);
     $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
     $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
@@ -854,5 +854,125 @@ public function cambioProducto(Request $request)
     );
 
     return $pdf->stream("reporte-cambio-producto-{$inicio}-{$fin}.pdf");
+}
+
+
+//////////////////////////////////////
+// REPORTE DE DEVOLUCIONES DE VENTAS//
+//////////////////////////////////////
+
+
+public function devolucionesVentas(Request $request)
+{
+    $request->validate([
+        'fecha_inicio' => 'required|date',
+        'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
+        'estado'       => 'nullable|string|in:DEVUELTA,ANULADA,PERFECTO,DANIADO',
+    ]);
+
+    $inicio = $request->fecha_inicio;
+    $fin    = $request->fecha_fin;
+    $estado = $request->estado;
+
+    $filtrosActivos = [];
+    if ($request->filled('estado')) {
+    $filtrosActivos['Estado'] = $request->estado === 'DANIADO' ? 'DAÑADO' : $request->estado;
+}
+
+    $config = Configuracion::first();
+
+    // consulta base de detalles de devolución
+    $detallesQuery = DB::table('detalle_devoluciones_ventas')
+        ->join('devoluciones_ventas', 'detalle_devoluciones_ventas.devolucion_venta_id', '=', 'devoluciones_ventas.id')
+        ->join('ventas', 'devoluciones_ventas.venta_id', '=', 'ventas.id')
+        ->join('productos', 'detalle_devoluciones_ventas.producto_id', '=', 'productos.id')
+        ->leftJoin('lotes', 'detalle_devoluciones_ventas.detalle_venta_id', '=', 'lotes.id')
+        ->whereBetween('devoluciones_ventas.fecha', [$inicio, $fin])
+        ->select(
+            'devoluciones_ventas.id as devolucion_id',
+            'devoluciones_ventas.fecha',
+            'devoluciones_ventas.estado as estado_devolucion',
+            'ventas.correlativo as venta_correlativo',
+            'productos.nombre as producto',
+            'detalle_devoluciones_ventas.cantidad',
+            'detalle_devoluciones_ventas.precio_unitario',
+            'detalle_devoluciones_ventas.subtotal',
+            'detalle_devoluciones_ventas.condicion',
+            'lotes.codigo_lote as lote'
+        );
+
+    // Aplicar filtro según estado
+    if ($estado === 'DEVUELTA' || $estado === 'ANULADA') {
+        $detallesQuery->where('devoluciones_ventas.estado', $estado);
+    } elseif ($estado === 'PERFECTO' || $estado === 'DANIADO') {
+        $detallesQuery->where('detalle_devoluciones_ventas.condicion', $estado);
+    }
+
+    $detalles = $detallesQuery->orderBy('devoluciones_ventas.fecha')->get();
+
+    // Siempre calcular perfectos y dañados a partir de los detalles filtrados
+    $perfectos = $detalles->where('condicion', 'PERFECTO')->values()->map(function ($item, $index) {
+        $item->nro = $index + 1;
+        return $item;
+    });
+    $danados = $detalles->where('condicion', 'DANIADO')->values()->map(function ($item, $index) {
+        $item->nro = $index + 1;
+        return $item;
+    });
+
+    // Para la vista cuando el filtro es DEVUELTA o ANULADA
+    $todos = collect();
+    if ($estado === 'DEVUELTA' || $estado === 'ANULADA') {
+        $todos = $detalles->map(function ($item, $index) {
+            $item->nro = $index + 1;
+            return $item;
+        });
+    }
+
+    // Total de registros (número de devoluciones que coinciden con el filtro)
+    if ($estado === 'DEVUELTA' || $estado === 'ANULADA') {
+        $totalRegistros = DB::table('devoluciones_ventas')
+            ->whereBetween('fecha', [$inicio, $fin])
+            ->where('estado', $estado)
+            ->count();
+    } elseif ($estado === 'PERFECTO' || $estado === 'DANIADO') {
+        $totalRegistros = $detalles->unique('devolucion_id')->count();
+    } else {
+        // Sin filtro de estado: contar todas las devoluciones
+        $totalRegistros = DB::table('devoluciones_ventas')
+            ->whereBetween('fecha', [$inicio, $fin])
+            ->count();
+    }
+
+    $cantidadPerfectos = $perfectos->sum('cantidad');
+    $cantidadDanados   = $danados->sum('cantidad');
+    $totalPerfectos    = $perfectos->sum('subtotal');
+    $totalDanados      = $danados->sum('subtotal');
+
+    // Generar PDF
+    $pdf = Pdf::loadView('reportes.Devoluciones', compact(
+        'config', 'inicio', 'fin',
+        'estado', 'perfectos', 'danados', 'todos',
+        'totalRegistros', 'cantidadPerfectos', 'cantidadDanados',
+        'totalPerfectos', 'totalDanados', 'filtrosActivos'
+    ));
+
+    $pdf->getDomPDF()->set_option("isPhpEnabled", true);
+    $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
+    $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+    $pdf->setPaper('A4', 'portrait');
+    $pdf->render();
+
+    $canvas = $pdf->getDomPDF()->getCanvas();
+    $canvas->page_text(
+        270,
+        $canvas->get_height() - 30,
+        "Página {PAGE_NUM} de {PAGE_COUNT}",
+        "DejaVu Sans",
+        9,
+        [0.5, 0.5, 0.5]
+    );
+
+    return $pdf->stream("reporte-devoluciones-ventas-{$inicio}-{$fin}.pdf");
 }
 }
