@@ -20,10 +20,6 @@ class ProductoDaniadoController extends Controller
                 $query->where('origen', $request->origen);
             }
 
-            if ($request->filled('estado_reclamacion')) {
-                $query->where('estado_reclamacion', $request->estado_reclamacion);
-            }
-
             if ($request->filled('estado')) {
                 $query->where('estado', $request->estado);
             }
@@ -168,17 +164,15 @@ class ProductoDaniadoController extends Controller
             $totalPerdida = $costoUnitario * $cantidad;
 
             $productoDaniado = ProductoDaniado::create([
-                'producto_id'        => $producto->id,
-                'lote_id'            => $loteId,
-                'cantidad'           => $cantidad,
-                'descripcion'        => $request->descripcion,
-                'fecha'              => now(),
-                'costo_unitario'     => $costoUnitario,
-                'total_perdida'      => $totalPerdida,
-                'estado'             => 'DANIADO',
-                'origen'             => $origen,
-                'estado_reclamacion' => 'REGISTRADO',
-                'reemplazo'          => null,
+                'producto_id'  => $producto->id,
+                'lote_id'      => $loteId,
+                'cantidad'     => $cantidad,
+                'descripcion'  => $request->descripcion,
+                'fecha'        => now(),
+                'costo_unitario' => $costoUnitario,
+                'total_perdida'  => $totalPerdida,
+                'origen'       => $origen,
+                'estado'       => 'REGISTRADO',
             ]);
 
             DB::commit();
@@ -219,7 +213,7 @@ class ProductoDaniadoController extends Controller
 
             $registro = ProductoDaniado::findOrFail($id);
 
-            if ($registro->estado_reclamacion !== 'REGISTRADO') {
+            if ($registro->estado !== 'REGISTRADO') {
                 return response()->json([
                     'message' => 'Solo se pueden anular registros que estén en estado REGISTRADO.'
                 ], 400);
@@ -255,7 +249,7 @@ class ProductoDaniadoController extends Controller
             }
 
             $registro->update([
-                'estado_reclamacion' => 'ANULADO'
+                'estado' => 'ANULADO'
             ]);
 
             DB::commit();

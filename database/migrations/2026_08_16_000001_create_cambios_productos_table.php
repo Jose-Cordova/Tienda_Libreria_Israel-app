@@ -15,7 +15,7 @@ return new class extends Migration
             $table->date('fecha');
             $table->decimal('costo_unitario', 12, 2);
             $table->decimal('total_perdida', 12, 2);
-            $table->enum('estado_reclamacion', ['PENDIENTE', 'ACEPTADO', 'RECHAZADO', 'ANULADO'])->default('PENDIENTE');
+            $table->enum('estado', ['PENDIENTE', 'ACEPTADO', 'RECHAZADO', 'ANULADO'])->default('PENDIENTE');
             $table->string('reemplazo', 50)->nullable();
             $table->unsignedBigInteger('producto_id');
             $table->foreign('producto_id')->references('id')->on('productos');

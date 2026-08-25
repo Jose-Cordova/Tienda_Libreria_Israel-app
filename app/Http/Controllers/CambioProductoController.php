@@ -17,8 +17,8 @@ class CambioProductoController extends Controller
         try {
             $query = CambioProducto::with(['producto.marca', 'productoReemplazo.marca', 'lote', 'producto.categoria']);
 
-            if ($request->filled('estado_reclamacion')) {
-                $query->where('estado_reclamacion', $request->estado_reclamacion);
+            if ($request->filled('estado')) {
+                $query->where('estado', $request->estado);
             }
 
             if ($request->filled('fecha_inicio')) {
@@ -113,7 +113,7 @@ class CambioProductoController extends Controller
                 'fecha'              => now(),
                 'costo_unitario'     => $costoUnitario,
                 'total_perdida'      => $totalPerdida,
-                'estado_reclamacion' => 'PENDIENTE',
+                'estado'             => 'PENDIENTE',
                 'reemplazo'          => null,
             ]);
 
@@ -155,7 +155,7 @@ class CambioProductoController extends Controller
 
             $registro = CambioProducto::findOrFail($id);
 
-            if ($registro->estado_reclamacion !== 'PENDIENTE') {
+            if ($registro->estado !== 'PENDIENTE') {
                 return response()->json([
                     'message' => 'Solo se pueden anular registros que estén en estado PENDIENTE.'
                 ], 400);
@@ -179,7 +179,7 @@ class CambioProductoController extends Controller
             }
 
             $registro->update([
-                'estado_reclamacion' => 'ANULADO'
+                'estado' => 'ANULADO'
             ]);
 
             DB::commit();
@@ -205,7 +205,7 @@ class CambioProductoController extends Controller
 
             $registro = CambioProducto::findOrFail($id);
 
-            if ($registro->estado_reclamacion !== 'PENDIENTE') {
+            if ($registro->estado !== 'PENDIENTE') {
                 return response()->json([
                     'message' => 'Solo se pueden aceptar reclamos que estén en estado PENDIENTE.'
                 ], 400);
@@ -277,7 +277,7 @@ class CambioProductoController extends Controller
                 }
             }
 
-            $registro->estado_reclamacion = 'ACEPTADO';
+            $registro->estado = 'ACEPTADO';
             $registro->reemplazo = $reemplazo;
             $registro->producto_reemplazo_id = ($tipo === 'diferente') ? $productoRecibido->id : null;
             $registro->lote_id = $loteId;
@@ -306,31 +306,28 @@ class CambioProductoController extends Controller
 
             $registro = CambioProducto::findOrFail($id);
 
-            if ($registro->estado_reclamacion !== 'PENDIENTE') {
+            if ($registro->estado !== 'PENDIENTE') {
                 return response()->json([
                     'message' => 'Solo se pueden rechazar reclamos que estén en estado PENDIENTE.'
                 ], 400);
             }
 
-            $producto = $registro->producto;
             $cantidad = $registro->cantidad;
 
             $registro->update([
-                'estado_reclamacion' => 'RECHAZADO'
+                'estado' => 'RECHAZADO'
             ]);
 
             $productoDaniado = ProductoDaniado::create([
-                'producto_id'        => $registro->producto_id,
-                'lote_id'            => $registro->lote_id,
-                'cantidad'           => $cantidad,
-                'descripcion'        => $registro->descripcion,
-                'fecha'              => now(),
-                'costo_unitario'     => $registro->costo_unitario,
-                'total_perdida'      => $registro->total_perdida,
-                'estado'             => 'DANIADO',
-                'origen'             => 'PROVEEDOR',
-                'estado_reclamacion' => 'RECHAZADO',
-                'reemplazo'          => null,
+                'producto_id'    => $registro->producto_id,
+                'lote_id'        => $registro->lote_id,
+                'cantidad'       => $cantidad,
+                'descripcion'    => $registro->descripcion,
+                'fecha'          => now(),
+                'costo_unitario' => $registro->costo_unitario,
+                'total_perdida'  => $registro->total_perdida,
+                'origen'         => 'PROVEEDOR',
+                'estado'         => 'RECHAZADO',
             ]);
 
             DB::commit();
