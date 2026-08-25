@@ -129,5 +129,6 @@ Route::middleware(['auth:api'])->group(function(){
         Route::get('/reportes/inventario', [ReporteController::class, 'inventario']);
         Route::get('/reportes/cierre-diario', [ReporteController::class, 'cierreDiario']);
         Route::get('/reportes/cambio-producto', [ReporteController::class, 'cambioProducto']);
+        Route::get('reportes/devoluciones-ventas', [ReporteController::class, 'devolucionesVentas']);
     });
 });
