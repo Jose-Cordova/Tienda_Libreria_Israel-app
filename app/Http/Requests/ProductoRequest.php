@@ -78,7 +78,7 @@ class ProductoRequest extends FormRequest
     {
         return [
 
-'nombre.required' => 'El nombre del producto es obligatorio.',
+            'nombre.required' => 'El nombre del producto es obligatorio.',
             'nombre.unique'   => 'Ya existe un producto con ese nombre.',
             'nombre.min'      => 'El nombre debe tener al menos 3 caracteres.',
             'precio_detalle.required' => 'El precio detalle es obligatorio.',
@@ -114,5 +114,54 @@ class ProductoRequest extends FormRequest
             'message' => 'Error de validación.',
             'errors' => $validator->errors()
         ], 422));
+    }
+
+    // Validación adicional para verificar nombres normalizados
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function($validator){
+            // Obtener el nombre del producto de la petición
+            $nombre = $this->input('nombre');
+            $id = $this->route('producto');
+
+            if($nombre){
+                $nombreNormalizado = $this->normalizarNombre($nombre);
+
+                //Consultar productos existentes excluyendo el actual so es actualizacion
+                $query = Producto::select('id', 'nombre');
+                if($id){
+                    $query->where('id', '!=', $id);
+                }
+
+                $productoExistente = $query->get()->first(function ($prod) use ($nombreNormalizado){
+                    return $this->normalizarNombre($prod->nombre) === $nombreNormalizado;
+                });
+
+                if($productoExistente){
+                    $validator->errors()->add(
+                        'nombre',
+                        "Ya existe un producto similar ('{$productoExistente->nombre}') en el catálogo."
+                    );
+                }
+            }
+        });
+    }
+
+    //Funcion auxiliar para normalizar nombres de productos
+    private function normalizarNombre(?string $nombre): string
+    {
+        if(!$nombre){
+            return '';
+        }
+        //Convertir a misnusculas
+        $texto = mb_strtolower(trim($nombre), 'UTF-8');
+        //Remplazar vocales con acento
+        $texto = str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'],
+            ['a', 'e', 'i', 'o', 'u', 'u', 'n'],
+            $texto
+        );
+        //Eliminar todo lo que no sea letra o numero
+        return preg_replace('/[^a-z0-9]/', '', $texto);
     }
 }
