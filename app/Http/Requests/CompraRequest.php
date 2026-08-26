@@ -46,23 +46,28 @@ class CompraRequest extends FormRequest
             'detalles.*.lotes.*.cantidad' => 'nullable|integer|min:1'
         ];
     }
-    //Agregamos validaciones adicionales
+    // Agregamos validaciones adicionales
     public function withValidator(Validator $validator): void
     {
-        //Obtenemos los detalles de la compra y los almanenamos para detectetar si hay duplicados
+        // Obtenemos los detalles de la compra y los almacenamos para detectar si hay duplicados
         $validator->after(function ($validator){
             $detalles = $this->input('detalles', []);
             $productosExistentes = [];
-            //Recorremos cada producto del detalle enviado en la compra y lo obtenemos
+            // Arreglo para rastrear nombres normalizados dentro de la misma compra
+            $nombresNuevosEnCompra = [];
+            // Consultamos los productos existentes en la base de datos de una sola vez
+            $productosEnBd = Producto::select('id', 'nombre')->get();
+
+            // Recorremos cada producto del detalle enviado en la compra
             foreach($detalles as $index => $detalle){
                 $productoId = $detalle['producto_id'] ?? null;
                 $num = $index + 1;
-                //Determinamos si el producto es perecedero
+                // Determinamos si el producto es perecedero
                 $esPerecedero = $this->esProductoPerecedero($detalle);
 
-                //Validar producto nuevo
+                // Validar producto nuevo
                 if(is_null($productoId)){
-                    //Validar campos para producto nuevo
+                    // Validar campos para producto nuevo
                     $camposRequeridos = [
                         'nombre' => 'El nombre del producto',
                         'stock_minimo' => 'El stock mínimo',
@@ -71,9 +76,9 @@ class CompraRequest extends FormRequest
                         'categoria_id' => 'La categoría',
                         'seccion' => 'La sección de medida'
                     ];
-                    //Recorremos cada uno de los campos para el producto nuevo
+                    // Recorremos cada uno de los campos para el producto nuevo
                     foreach($camposRequeridos as $campo => $etiqueta){
-                        //Comprobamos que el campo no este vacio
+                        // Comprobamos que el campo no esté vacío
                         if(empty($detalle[$campo])){
                             $validator->errors()->add(
                                 "detalles.$index.$campo",
@@ -81,26 +86,43 @@ class CompraRequest extends FormRequest
                             );
                         }
                     }
-                    //Validamos que no se cree el mismo producto 2 veses
+
+                    // Validación con nombre normalizado para evitar duplicados como Coca-Cola vs CocaCola
                     if(!empty($detalle['nombre'])){
-                        $existeProducto = Producto::whereRaw('LOWER(nombre) = ?', [strtolower($detalle['nombre'])])->exists();
-                        if($existeProducto){
+                        $nombreNormalizado = $this->normalizarNombre($detalle['nombre']);
+
+                        // 1. Verificar si ya existe un producto similar en la base de datos
+                        $productoCoincidente = $productosEnBd->first(function ($prod) use ($nombreNormalizado) {
+                            return $this->normalizarNombre($prod->nombre) === $nombreNormalizado;
+                        });
+
+                        if($productoCoincidente){
                             $validator->errors()->add(
                                 "detalles.$index.nombre",
-                                "Ya existe un producto con el nombre '{$detalle['nombre']}' en la base de datos."
+                                "Ya existe un producto similar ('{$productoCoincidente->nombre}') en la base de datos."
                             );
+                        }
+
+                        // 2. Verificar si se intenta agregar el mismo producto nuevo dos veces en esta compra
+                        if(in_array($nombreNormalizado, $nombresNuevosEnCompra)){
+                            $validator->errors()->add(
+                                "detalles.$index.nombre",
+                                "El producto '{$detalle['nombre']}' está duplicado en los detalles de esta misma compra."
+                            );
+                        } else {
+                            $nombresNuevosEnCompra[] = $nombreNormalizado;
                         }
                     }
 
                 }else{
-                    //Validamos si el producto ya esta en el detalle
+                    // Validamos si el producto ya está en el detalle
                     if(in_array($productoId, $productosExistentes)){
                         $validator->errors()->add(
                             "detalles.$index.producto_id",
                             "El producto (ID: $productoId) ya fue agregado en otro detalle."
                         );
                     }else{
-                        //Si no existe lo guardamos en el array
+                        // Si no existe lo guardamos en el array
                         $productosExistentes[] = $productoId;
                     }
                 }
@@ -163,6 +185,24 @@ class CompraRequest extends FormRequest
                 }
             }
         });
+    }
+
+    //Funcion auxiliar para normalizar nombres de productos
+    private function normalizarNombre(?string $nombre): string
+    {
+        if(!$nombre){
+            return '';
+        }
+        //Convertir a misnusculas
+        $texto = mb_strtolower(trim($nombre), 'UTF-8');
+        //Remplazar vocales con acento
+        $texto = str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'],
+            ['a', 'e', 'i', 'o', 'u', 'u', 'n'],
+            $texto
+        );
+        //Eliminar todo lo que no sea letra o numero
+        return preg_replace('/[^a-z0-9]/', '', $texto);
     }
 
     //Funcion que recibe un array de los datos de un detalle
