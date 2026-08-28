@@ -84,6 +84,7 @@ Route::middleware(['auth:api'])->group(function(){
 
         // Consulta de productos para ventas
         Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaStockMinimo']);
+        Route::get('productos/verificar-nombre', [ProductoController::class, 'verificarNombre']);
         Route::apiResource('productos', ProductoController::class)->only(['index', 'show']);
 
         // Notas personales

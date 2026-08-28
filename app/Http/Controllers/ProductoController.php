@@ -226,5 +226,58 @@ class ProductoController extends Controller
             ], 500);
         }
     }
+
+    public function verificarNombre(Request $request)
+    {
+        try {
+            $nombre = $request->query('nombre');
+            $id = $request->query('id');
+
+            if (!$nombre) {
+                return response()->json(['existe' => false], 200);
+            }
+
+            $nombreNormalizado = $this->normalizarNombre($nombre);
+            $query = Producto::select('id', 'nombre');
+            if ($id) {
+                $query->where('id', '!=', $id);
+            }
+
+            $productoExistente = $query->get()->first(function ($prod) use ($nombreNormalizado) {
+                return $this->normalizarNombre($prod->nombre) === $nombreNormalizado;
+            });
+
+            if ($productoExistente) {
+                return response()->json([
+                    'existe' => true,
+                    'producto' => [
+                        'id' => $productoExistente->id,
+                        'nombre' => $productoExistente->nombre
+                    ]
+                ], 200);
+            }
+
+            return response()->json(['existe' => false], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al verificar el nombre del producto.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function normalizarNombre(?string $nombre): string
+    {
+        if (!$nombre) {
+            return '';
+        }
+        $texto = mb_strtolower(trim($nombre), 'UTF-8');
+        $texto = str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'],
+            ['a', 'e', 'i', 'o', 'u', 'u', 'n'],
+            $texto
+        );
+        return preg_replace('/[^a-z0-9]/', '', $texto);
+    }
 }
 
