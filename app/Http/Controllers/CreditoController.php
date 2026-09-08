@@ -62,7 +62,7 @@ class CreditoController extends Controller
     }
     // Si $estado es null (Todos los créditos), no se aplica having
 
-    $clientes = $query->orderBy('clientes_creditos.nombre')->paginate($perPage);
+    $clientes = $query->orderByDesc('clientes_creditos.created_at')->paginate($perPage);
 
     // Formatear la respuesta
     $clientes->getCollection()->transform(function ($cliente) {
