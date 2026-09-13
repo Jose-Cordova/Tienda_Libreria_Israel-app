@@ -170,9 +170,12 @@ if($producto->perecedero == 'NORMAL'){
         'venta_id' => $venta->id
     ]);
 
-    //descontamos stock general del producto
+        //descontamos stock general del producto
+    $nuevoStock = $producto->stock - $detalle['cantidad'];
+
     $producto->update([
-        'stock' => $producto->stock - $detalle['cantidad']
+        'stock' => $nuevoStock,
+        'estado' => $nuevoStock <= 0 ? 'INACTIVO' : $producto->estado
     ]);
 
     //sumamos subtotal al total venta
@@ -258,8 +261,11 @@ if($producto->perecedero == 'NORMAL'){
     }
 
     //descontamos stock general del producto
+    $nuevoStock = $producto->stock - $detalle['cantidad'];
+
     $producto->update([
-        'stock' => $producto->stock - $detalle['cantidad']
+        'stock' => $nuevoStock,
+        'estado' => $nuevoStock <= 0 ? 'INACTIVO' : $producto->estado
     ]);
         }
     }
