@@ -27,12 +27,12 @@ class ProveedorRequest extends FormRequest
     //Funcion que define las reglas de validacion
     public function rules(): array
     {
-        //Obtenemos el id y extraemos la preticion
-        $id = $this->route('proveedore');
+        //Obtenemos el id y extraemos la peticion
+        $id = $this->route('proveedore') ?? $this->route('proveedor') ?? $this->id;
 
         return [
             'nombre' => 'required|string|min:2|max:50',
-            'telefono' => 'required|string|min:8|max:20',
+            'telefono' => ['required', 'string', 'min:8', 'max:20', Rule::unique('proveedores', 'telefono')->ignore($id)],
             'email' => ['required', 'email', 'max:100', Rule::unique('proveedores', 'email')->ignore($id)],
             'direccion' => 'nullable|string|min:5|max:250'
         ];
@@ -45,6 +45,7 @@ class ProveedorRequest extends FormRequest
             'nombre.min'         => 'El nombre debe tener al menos 2 caracteres.',
             'telefono.required'  => 'El teléfono es obligatorio.',
             'telefono.min'       => 'El teléfono debe tener al menos 8 caracteres.',
+            'telefono.unique'    => 'Ya existe un proveedor registrado con este número de teléfono.',
             'email.required'     => 'El correo es obligatorio.',
             'email.email'        => 'El correo no tiene un formato válido.',
             'email.unique'       => 'Ya existe un proveedor con este correo.',
