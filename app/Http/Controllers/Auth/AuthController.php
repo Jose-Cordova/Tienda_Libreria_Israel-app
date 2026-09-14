@@ -13,14 +13,46 @@ use App\Models\User;
 class AuthController extends Controller
 {
     public function login(Request $request){
+        $request->validate([
+            'email' => 'required|string|email',
+            'password' => 'required|string'
+        ]);
+
         $credenciales = $request->only('email','password');
-        //Evaluamos si no se obtiene un token válido
+
+        // Evaluamos si las credenciales son incorrectas
         if(!$token = Auth::attempt($credenciales)){
            return response()->json([
             'message'=> 'Credenciales inválidas'
            ], 401);
         }
-        //En caso de exitoso retornamos el token
+
+        // Obtener el usuario autenticado
+        $user = auth()->user();
+
+        // Validar el estado del usuario
+        if ($user->estado === 'INACTIVO') {
+            auth()->logout();
+            return response()->json([
+                'message' => 'Tu cuenta se encuentra inactiva. Comunícate con el administrador.'
+            ], 403);
+        }
+
+        if ($user->estado === 'PENDIENTE') {
+            auth()->logout();
+            return response()->json([
+                'message' => 'Tu cuenta está pendiente de activación. Revisa tu correo electrónico para establecer tu contraseña.'
+            ], 403);
+        }
+
+        if ($user->estado !== 'ACTIVO') {
+            auth()->logout();
+            return response()->json([
+                'message' => 'Acceso denegado. No tienes una cuenta activa en el sistema.'
+            ], 403);
+        }
+
+        // En caso de exitoso retornamos el token
         return $this->responseWithToken($token);
     }
 
@@ -38,7 +70,8 @@ class AuthController extends Controller
       $user = User::create([
           'name' => $request->name,
           'email' => $request->email,
-          'password' => Hash::make($request->password)
+          'password' => Hash::make($request->password),
+          'estado' => 'ACTIVO'
       ]);
 
       //Asignar rol por defecto
@@ -73,23 +106,35 @@ class AuthController extends Controller
     public function me(){
         // Cargar los roles del usuario autenticado al consultar /auth/me
         $user = auth()->user();
-        if ($user) {
-            $user->load('roles');
+        if (!$user || $user->estado !== 'ACTIVO') {
+            auth()->logout();
+            return response()->json([
+                'message' => 'Tu cuenta no está activa.'
+            ], 403);
         }
 
+        $user->load('roles');
         return response()->json($user);
     }
 
     //Método para invalidar un token (logout)
     public function logout(){
-    auth()->logout();
-    return response()->json([
-        'message' => 'Sesión cerrada correctamente'
-    ]);
+        auth()->logout();
+        return response()->json([
+            'message' => 'Sesión cerrada correctamente'
+        ]);
     }
 
     //Método para refrescar el token
     public function refresh(){
-    return $this->responseWithToken(auth()->refresh());
+        $user = auth()->user();
+        if (!$user || $user->estado !== 'ACTIVO') {
+            auth()->logout();
+            return response()->json([
+                'message' => 'Tu cuenta no está activa.'
+            ], 403);
+        }
+
+        return $this->responseWithToken(auth()->refresh());
     }
 }

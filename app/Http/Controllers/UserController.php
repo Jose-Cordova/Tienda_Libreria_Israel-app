@@ -116,18 +116,36 @@ class UserController extends Controller
         try{
             $user = User::findOrFail($id);
 
-            //Protegemos el usuario master
-            if($user->id === 1){
+            // Protegemos al usuario master de ser modificado por otros usuarios
+            if($user->id === 1 && auth()->id() !== 1){
                 return response()->json([
                     'message' => 'No se puede modificar al usuario master.'
                 ], 403);
+            }
+
+            // Si el usuario se está editando a sí mismo
+            if($user->id === auth()->id()){
+                $user->update([
+                    'name' => $request->name,
+                    'email' => $request->email
+                ]);
+
+                // Si es el master (id === 1), asegurar que conserve ADMIN
+                if($user->id === 1){
+                    $user->syncRoles(['ADMIN']);
+                }
+
+                return response()->json([
+                    'message' => 'Perfil actualizado correctamente.',
+                    'user' => $user->load('roles')
+                ], 200);
             }
 
             $user->update([
                 'name' => $request->name,
                 'email' => $request->email
             ]);
-            //Actualizar rol sincronizar
+            // Actualizar rol para otros usuarios
             $user->syncRoles([$request->role]);
 
             return response()->json([
@@ -160,9 +178,17 @@ class UserController extends Controller
 
             if($user->id === 1){
                 return response()->json([
-                    'message' => 'No se puede eliminar al usuario master'
+                    'message' => 'No se puede eliminar al usuario master.'
                 ], 403);
             }
+
+            // Evitar que un usuario elimine su propia cuenta
+            if($user->id === auth()->id()){
+                return response()->json([
+                    'message' => 'No puedes eliminar tu propia cuenta de usuario.'
+                ], 403);
+            }
+
             if($user->estado === 'ACTIVO'){
                 return response()->json([
                     'message' => 'No se puede eliminar un usuario activo.'
@@ -212,6 +238,14 @@ class UserController extends Controller
                     'message' => 'No se puede modificar al usuario master.'
                 ], 403);
             }
+
+            // Evitar que cualquier usuario inactive su propia cuenta
+            if($user->id === auth()->id()){
+                return response()->json([
+                    'message' => 'No puedes cambiar el estado de tu propia cuenta.'
+                ], 403);
+            }
+
             if($user->estado === 'PENDIENTE'){
                 return response()->json([
                     'message' => 'Los usuarios pendientes deben aceptar la invitación antes de cambiar su estado.'
