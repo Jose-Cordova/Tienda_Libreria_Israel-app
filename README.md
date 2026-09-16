@@ -1,66 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+﻿# 🛠️ Backend - Tienda y Librería Israel (API REST)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema backend para la gestión integral de inventario, punto de venta (POS), compras con Costo Promedio Ponderado (CPP), control de lotes con fechas de vencimiento, créditos y generación de reportes contables.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Tecnologías Principales
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+* **Framework:** Laravel 12 (PHP 8.2+)
+* **Base de Datos:** PostgreSQL 15+
+* **Autenticación & Seguridad:** JWT (	ymon/jwt-auth) y Laravel Sanctum
+* **Roles y Permisos:** Spatie Laravel Permission (spatie/laravel-permission)
+* **Generación de Reportes:** DomPDF (arryvdh/laravel-dompdf)
+* **ORM:** Eloquent con transacciones atómicas (ACID)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 📂 Estructura Limpia del Proyecto
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+`	ext
+Tienda_Libreria_Isarael-app/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/          # Controladores de la API REST
+│   │   │   ├── Auth/             # Autenticación (Login, Recuperación)
+│   │   │   ├── CompraController.php            # Compras y Costo Promedio Ponderado
+│   │   │   ├── VentaController.php             # Facturación y ventas POS
+│   │   │   ├── ProductoController.php          # Catálogo e inventario
+│   │   │   ├── CreditoController.php           # Cuentas por cobrar y abonos
+│   │   │   ├── CambioProductoController.php    # Garantías y cambios
+│   │   │   ├── DevolucionVentaController.php   # Devoluciones de clientes
+│   │   │   ├── ProductoDaniadoController.php   # Registro de mermas/daños
+│   │   │   ├── ProveedorController.php         # Gestión de proveedores
+│   │   │   ├── CronogramaProveedorController.php # Visitas de proveedores
+│   │   │   ├── ReporteController.php           # Generación de reportes PDF
+│   │   │   └── UserController.php              # Administración de usuarios
+│   │   └── Requests/             # Form Requests (Validaciones desacopladas)
+│   ├── Models/                   # Modelos Eloquent y relaciones relacionales
+│   │   ├── Producto.php          # Producto con costo promedio y stock
+│   │   ├── Lote.php              # Control de vencimientos y lotes activos
+│   │   ├── Compra.php / DetalleCompra.php
+│   │   ├── Venta.php / DetalleVenta.php
+│   │   ├── Credito.php / AbonoCredito.php
+│   │   └── ...
+├── database/
+│   ├── migrations/               # Esquema de tablas y relaciones PostgreSQL
+│   ├── seeders/                  # Datos iniciales para pruebas
+│   └── factories/                # Generadores de datos simulados
+├── resources/
+│   └── views/
+│       └── reportes/             # Plantillas Blade optimizadas para DomPDF
+├── routes/
+│   ├── api.php                   # Endpoints protegidos de la API REST
+│   └── web.php                   # Rutas web base
+├── .env.example                  # Plantilla de configuración de entorno
+└── composer.json                 # Dependencias y scripts de PHP
+`
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## ⚙️ Requisitos Previos
 
-## Laravel Sponsors
+* PHP >= 8.2 con extensiones: pdo, pdo_pgsql, mbstring, openssl, cmath, curl.
+* Composer 2.x
+* PostgreSQL 14+ con base de datos creada (ej: 	ienda_libreria_israel)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## 🔧 Instalación y Configuración
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+1. **Clonar o descargar el proyecto:**
+   `ash
+   cd Tienda_Libreria_Isarael-app
+   `
 
-## Contributing
+2. **Instalar dependencias:**
+   `ash
+   composer install
+   `
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+3. **Configurar el entorno:**
+   `ash
+   cp .env.example .env
+   php artisan key:generate
+   php artisan jwt:secret
+   `
 
-## Code of Conduct
+4. **Configurar la conexión a PostgreSQL en el archivo .env:**
+   `env
+   DB_CONNECTION=pgsql
+   DB_HOST=127.0.0.1
+   DB_PORT=5432
+   DB_DATABASE=tienda_libreria_israel
+   DB_USERNAME=postgres
+   DB_PASSWORD=tu_password
+   `
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+5. **Ejecutar migraciones y seeders:**
+   `ash
+   php artisan migrate --seed
+   `
 
-## Security Vulnerabilities
+6. **Iniciar el servidor de desarrollo:**
+   `ash
+   php artisan serve --port=8000
+   `
+   *La API estará disponible en:* http://localhost:8000/api
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## 📦 Lógica Central: Costo Promedio Ponderado (CPP)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+El sistema recalcula el costo unitario base del producto en cada compra para proteger el margen de ganancia:
+
+\text{Nuevo CPP} = \frac{(\text{Stock Previo} \times \text{CPP Anterior}) + (\text{Cantidad Comprada} \times \text{Costo Unitario Factura})}{\text{Stock Previo} + \text{Cantidad Comprada}}
+
+* **Venta al Detalle:** $\text{Nuevo CPP} \times (1 + \text{Margen Detalle}\%)$
+* **Venta al Mayor:** $\text{Nuevo CPP} \times (1 + \text{Margen Mayor}\%)$
+
+---
+
+## 📑 Principales Módulos y Endpoints
+
+| Método | Endpoint | Descripción |
+| :--- | :--- | :--- |
+| POST | /api/login | Autenticación y emisión de JWT Token |
+| GET/POST | /api/productos | Consulta con filtros y registro de productos |
+| GET/POST | /api/compras | Listado y registro de compras (Wizard) |
+| PUT | /api/compras/{id}/anular | Anulación de compra y reversión de stock/CPP |
+| GET/POST | /api/ventas | Facturación de punto de venta |
+| GET/POST | /api/creditos | Control de cuentas por cobrar y abonos |
+| GET | /api/reportes/{tipo}/pdf | Descarga de reportes PDF |
