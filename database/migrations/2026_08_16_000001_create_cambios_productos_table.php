@@ -23,6 +23,7 @@ return new class extends Migration
             $table->foreign('producto_reemplazo_id')->references('id')->on('productos')->nullOnDelete();
             $table->unsignedBigInteger('lote_id')->nullable();
             $table->foreign('lote_id')->references('id')->on('lotes')->nullOnDelete();
+            $table->enum('origen', ['MANUAL', 'VENCIMIENTO'])->default('MANUAL');
             $table->timestamps();
         });
     }

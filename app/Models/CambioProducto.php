@@ -19,6 +19,7 @@ class CambioProducto extends Model
         'producto_id',
         'producto_reemplazo_id',
         'lote_id',
+        'origen'
     ];
 
     protected $casts = [
@@ -39,6 +40,6 @@ class CambioProducto extends Model
 
     public function lote()
     {
-        return $this->belongsTo(Lote::class);
+        return $this->belongsTo(Lote::class, 'lote_id');
     }
 }

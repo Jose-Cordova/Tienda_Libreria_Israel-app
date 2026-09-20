@@ -57,18 +57,31 @@ class AuthController extends Controller
 
     protected function responseWithToken($token){
         // Obtener el usuario autenticado y cargar sus roles asignados
-        $user = auth()->user();
-        if ($user) {
-            $user->load('roles');
-        }
+            $user = auth()->user();
+            if ($user) {
+                $user->load('roles');
 
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'user' => $user,
-            'expires_in' => auth()->factory()->getTTL() * 60
-        ]);
-    }
+                // Solo si el usuario es ADMINISTRADOR, procesar los lotes vencidos
+                if ($user->hasRole('ADMIN')) {
+                    $hoy = now()->toDateString();
+                    $hayVencidos = \App\Models\Lote::where('estado', 'ACTIVO')
+                        ->where('cantidad_actual', '>', 0)
+                        ->where('fecha_vencimiento', '<=', $hoy)
+                        ->exists();
+
+                    if ($hayVencidos) {
+                        \Illuminate\Support\Facades\Artisan::call('inventario:procesar-vencidos');
+                    }
+                }
+            }
+
+            return response()->json([
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'user' => $user,
+                'expires_in' => auth()->factory()->getTTL() * 60
+            ]);
+        }
 
     public function me(){
         // Cargar los roles del usuario autenticado al consultar /auth/me
