@@ -333,6 +333,8 @@ class CompraController extends Controller
                         Lote::where('producto_id', $producto->id)
                             ->where('compra_id', $compra->id)
                             ->update([
+                                'cantidad_inicial' => 0,
+                                'cantidad_actual' => 0,
                                 'estado' => 'INACTIVO',
                                 'motivo_inactivo' => 'ANULACION'
                             ]);

@@ -15,10 +15,34 @@ class ForgotPasswordController extends Controller
     {
         $request->validate([
             'email' => 'required|email|exists:users,email'
+        ], [
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico no es válido.',
+            'email.exists' => 'No encontramos ningún usuario registrado con este correo.'
         ]);
 
         //Obtenemos el usuario por email
         $user = User::where('email', $request->email)->first();
+
+        // Validamos que el usuario esté ACTIVO
+        if ($user->estado === 'INACTIVO') {
+            return response()->json([
+                'message' => 'Tu cuenta se encuentra inactiva. No puedes restablecer tu contraseña. Comunícate con el administrador.'
+            ], 403);
+        }
+
+        if ($user->estado === 'PENDIENTE') {
+            return response()->json([
+                'message' => 'Tu cuenta aún está pendiente de activación. Revisa tu correo de invitación inicial para establecer tu contraseña.'
+            ], 403);
+        }
+
+        if ($user->estado !== 'ACTIVO') {
+            return response()->json([
+                'message' => 'Tu cuenta no está activa para restablecer contraseña.'
+            ], 403);
+        }
+
         //Generamos token de restablecimiento
         $token = Password::broker('users')->createToken($user);
         //Enviamos al correo con el token
@@ -46,7 +70,26 @@ class ForgotPasswordController extends Controller
                 // Regla de validación para cualquier carácter especial
                 'regex:/[^a-zA-Z0-9]/'
             ]
+        ], [
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'password.regex' => 'La contraseña no cumple con los requisitos de seguridad.'
         ]);
+
+        // Validamos que el usuario exista y esté ACTIVO
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json([
+                'message' => 'No se encontró un usuario con ese correo electrónico.'
+            ], 404);
+        }
+
+        if ($user->estado !== 'ACTIVO') {
+            return response()->json([
+                'message' => 'Tu cuenta no se encuentra activa. No es posible restablecer la contraseña.'
+            ], 403);
+        }
 
         //Intentamos restablecer la contraseña
         $status = Password::broker('users')->reset(
