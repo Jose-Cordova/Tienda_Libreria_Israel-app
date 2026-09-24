@@ -161,6 +161,12 @@ class CambioProductoController extends Controller
                 ], 400);
             }
 
+            if ($registro->origen === 'VENCIMIENTO') {
+                return response()->json([
+                    'message' => 'No se puede anular un cambio de producto generado por vencimiento de lote.'
+                ], 400);
+            }
+
             $producto = $registro->producto;
             $cantidad = $registro->cantidad;
 
@@ -342,6 +348,56 @@ class CambioProductoController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Error al rechazar la reclamación.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateCantidad(\Illuminate\Http\Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $registro = CambioProducto::findOrFail($id);
+
+            if ($registro->estado !== 'PENDIENTE') {
+                return response()->json([
+                    'message' => 'Solo se puede modificar la cantidad de registros en estado PENDIENTE.'
+                ], 400);
+            }
+
+            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+                'cantidad' => 'required|integer|min:1'
+            ], [
+                'cantidad.required' => 'La cantidad es obligatoria.',
+                'cantidad.integer'  => 'La cantidad debe ser un número entero.',
+                'cantidad.min'      => 'La cantidad debe ser al menos 1.'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => $validator->errors()->first()
+                ], 422);
+            }
+
+            $nuevaCantidad = (int) $request->cantidad;
+            $costoUnitario = $registro->costo_unitario ?: 0.00;
+
+            $registro->cantidad = $nuevaCantidad;
+            $registro->total_perdida = $costoUnitario * $nuevaCantidad;
+            $registro->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message'         => 'Cantidad actualizada correctamente.',
+                'cambio_producto' => $registro->load(['producto.marca', 'productoReemplazo.marca', 'lote'])
+            ], 200);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al actualizar la cantidad del registro.',
                 'error'   => $e->getMessage()
             ], 500);
         }

@@ -81,13 +81,13 @@ class CambioProductoRequest extends FormRequest
             $productoRecibido = $registro?->producto;
         }
         if ($productoRecibido?->perecedero === 'PERECEDERO' && $this->lote_opcion !== 'mismo') {
-            $rules['codigo_lote']       = 'required|string|max:50';
+            $rules['codigo_lote']       = 'required|string|max:50|unique:lotes,codigo_lote';
             $rules['fecha_vencimiento'] = 'required|date|after:today';
         }
 
         // Un producto nuevo perecedero siempre requiere un lote nuevo
         if ($this->crear_producto && $this->perecedero === 'PERECEDERO') {
-            $rules['codigo_lote']       = 'required|string|max:50';
+            $rules['codigo_lote']       = 'required|string|max:50|unique:lotes,codigo_lote';
             $rules['fecha_vencimiento'] = 'required|date|after:today';
         }
 
@@ -108,6 +108,7 @@ class CambioProductoRequest extends FormRequest
             'producto_reemplazo_id.required' => 'Debe seleccionar el producto de reemplazo.',
             'producto_reemplazo_id.exists'   => 'El producto de reemplazo no existe.',
             'codigo_lote.required'  => 'El código del lote es obligatorio para productos perecederos.',
+            'codigo_lote.unique'    => 'Ya existe un lote registrado con ese código.',
             'fecha_vencimiento.required' => 'La fecha de vencimiento es obligatoria para productos perecederos.',
             'fecha_vencimiento.after'    => 'La fecha de vencimiento debe ser posterior a hoy.',
             'nombre.required'       => 'El nombre del producto nuevo es obligatorio.',

@@ -132,7 +132,7 @@ class DevolucionVentaController extends Controller
                         $producto->save();
                     }
 
-                    // Si la venta original usó un lote, devolver la cantidad a ese lote
+                    // Si la venta original uso un lote, devolver la cantidad a ese lote
                     if ($detalleVenta->lote_id && $detalleVenta->lote) {
                         $lote = $detalleVenta->lote;
                         $lote->cantidad_actual += $cantidad;

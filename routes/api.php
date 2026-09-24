@@ -70,10 +70,10 @@ Route::middleware(['auth:api'])->group(function(){
 
         // Devoluciones y productos dañados
         Route::apiResource('devoluciones-ventas', DevolucionVentaController::class);
-        Route::get('productos-daniados/lotes-vencidos', [ProductoDaniadoController::class, 'lotesVencidos']);
         Route::apiResource('productos-daniados', ProductoDaniadoController::class);
         Route::post('productos-daniados/{id}/anular', [ProductoDaniadoController::class, 'anular']);
         Route::apiResource('cambios-productos', CambioProductoController::class);
+        Route::patch('cambios-productos/{id}/cantidad', [CambioProductoController::class, 'updateCantidad']);
         Route::post('cambios-productos/{id}/anular', [CambioProductoController::class, 'anular']);
         Route::post('cambios-productos/{id}/aceptar', [CambioProductoController::class, 'aceptar']);
         Route::post('cambios-productos/{id}/rechazar', [CambioProductoController::class, 'rechazar']);
@@ -85,6 +85,7 @@ Route::middleware(['auth:api'])->group(function(){
         // Consulta de productos para ventas
         Route::get('productos/alerta-stock-minimo', [ProductoController::class, 'alertaStockMinimo']);
         Route::get('productos/verificar-nombre', [ProductoController::class, 'verificarNombre']);
+        Route::get('productos/{id}/ajustes-stock', [ProductoController::class, 'ajustesStock']);
         Route::apiResource('productos', ProductoController::class)->only(['index', 'show']);
 
         // Notas personales
@@ -131,5 +132,6 @@ Route::middleware(['auth:api'])->group(function(){
         Route::get('/reportes/cierre-diario', [ReporteController::class, 'cierreDiario']);
         Route::get('/reportes/cambio-producto', [ReporteController::class, 'cambioProducto']);
         Route::get('reportes/devoluciones-ventas', [ReporteController::class, 'devolucionesVentas']);
+         Route::post('cambios-productos/procesar-vencidos', [CambioProductoController::class, 'procesarVencidos']);
     });
 });

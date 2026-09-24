@@ -54,31 +54,6 @@ class ProductoDaniadoController extends Controller
         }
     }
 
-    public function lotesVencidos(ProductoDaniadoRequest $request)
-    {
-        try {
-            $query = Lote::with('producto')
-                ->where('estado', 'ACTIVO')
-                ->where('cantidad_actual', '>', 0)
-                ->whereNotNull('fecha_vencimiento')
-                ->whereDate('fecha_vencimiento', '<', now()->toDateString());
-
-            if ($request->filled('producto_id')) {
-                $query->where('producto_id', $request->producto_id);
-            }
-
-            $lotes = $query->orderBy('fecha_vencimiento')->get();
-
-            return response()->json($lotes, 200);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'message' => 'Error al obtener los lotes vencidos.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
-    }
-
     public function store(ProductoDaniadoRequest $request)
     {
         try {
@@ -87,41 +62,12 @@ class ProductoDaniadoController extends Controller
             $producto = Producto::findOrFail($request->producto_id);
             $cantidad = $request->cantidad;
             $loteId = $request->lote_id;
-            $origen = $request->origen;
+            $origen = $request->origen ?: 'DIRECTO';
 
             if ($producto->stock < $cantidad) {
                 return response()->json([
                     'message' => "Stock insuficiente del producto. Stock disponible: {$producto->stock}."
                 ], 400);
-            }
-
-            if ($origen === 'VENCIMIENTO') {
-                if (!$loteId) {
-                    return response()->json([
-                        'message' => 'Debes seleccionar el lote vencido.'
-                    ], 400);
-                }
-
-                $lote = Lote::where('id', $loteId)->where('producto_id', $producto->id)->first();
-                if (!$lote) {
-                    return response()->json([
-                        'message' => 'El lote seleccionado no pertenece a este producto.'
-                    ], 400);
-                }
-
-                if ($lote->estado !== 'ACTIVO' || $lote->cantidad_actual <= 0) {
-                    return response()->json([
-                        'message' => 'El lote no tiene stock disponible.'
-                    ], 400);
-                }
-
-                if (!$lote->fecha_vencimiento || $lote->fecha_vencimiento >= now()->toDateString()) {
-                    return response()->json([
-                        'message' => 'El lote seleccionado no está vencido.'
-                    ], 400);
-                }
-
-                $cantidad = $lote->cantidad_actual;
             }
 
             if ($producto->perecedero === 'PERECEDERO') {
@@ -145,9 +91,9 @@ class ProductoDaniadoController extends Controller
                 }
 
                 $lote->cantidad_actual -= $cantidad;
-                if ($lote->cantidad_actual <= 0 || $origen === 'VENCIMIENTO') {
+                if ($lote->cantidad_actual <= 0) {
                     $lote->estado = 'INACTIVO';
-                    $lote->motivo_inactivo = $origen === 'VENCIMIENTO' ? 'VENCIMIENTO' : 'AGOTADO';
+                    $lote->motivo_inactivo = 'AGOTADO';
                 }
                 $lote->save();
             } else {
@@ -229,6 +175,15 @@ class ProductoDaniadoController extends Controller
                 return response()->json([
                     'message' => 'Los registros por vencimiento no se pueden anular.'
                 ], 400);
+            }
+
+            if ($registro->lote_id) {
+                $loteCheck = $registro->lote;
+                if ($loteCheck && $loteCheck->fecha_vencimiento <= now()->toDateString()) {
+                    return response()->json([
+                        'message' => "No se puede anular este registro porque el lote ({$loteCheck->codigo_lote}) ya se encuentra vencido."
+                    ], 400);
+                }
             }
 
             $producto = $registro->producto;
