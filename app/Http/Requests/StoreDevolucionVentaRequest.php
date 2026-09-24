@@ -16,7 +16,7 @@ class StoreDevolucionVentaRequest extends FormRequest
     {
         return [
             'venta_id' => 'required|exists:ventas,id',
-            'motivo'   => 'required|string|max:255',
+            'motivo' => 'required|string|min:5|max:255',
 
             'detalle'                    => 'required|array|min:1',
             'detalle.*.detalle_venta_id' => 'required|exists:detalle_ventas,id',
