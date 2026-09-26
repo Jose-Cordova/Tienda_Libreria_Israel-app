@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Models\Configuracion;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ReporteController extends Controller
 {
@@ -22,7 +22,7 @@ class ReporteController extends Controller
             40,
             $canvas->get_height() - 30,
             "Fecha de generación: {$fechaGeneracion}",
-            "DejaVu Sans",
+            'DejaVu Sans',
             9,
             [0.5, 0.5, 0.5]
         );
@@ -31,8 +31,8 @@ class ReporteController extends Controller
         $canvas->page_text(
             $canvas->get_width() - 100,
             $canvas->get_height() - 30,
-            "Página {PAGE_NUM} de {PAGE_COUNT}",
-            "DejaVu Sans",
+            'Página {PAGE_NUM} de {PAGE_COUNT}',
+            'DejaVu Sans',
             9,
             [0.5, 0.5, 0.5]
         );
@@ -42,11 +42,11 @@ class ReporteController extends Controller
     {
         $request->validate([
             'fecha_inicio' => 'required|date',
-            'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
         ]);
 
         $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
+        $fin = $request->fecha_fin;
 
         // Datos de la tienda para el encabezado
         $config = Configuracion::first();
@@ -60,6 +60,7 @@ class ReporteController extends Controller
             ->get()
             ->map(function ($item, $index) {
                 $item->nro = $index + 1;
+
                 return $item;
             });
 
@@ -73,57 +74,49 @@ class ReporteController extends Controller
             ->get()
             ->map(function ($item, $index) {
                 $item->nro = $index + 1;
+
                 return $item;
             });
 
-        // 3. Devoluciones (solo DEVUELTA)
-        $devoluciones = DB::table('devoluciones_ventas')
-            ->join('ventas', 'devoluciones_ventas.venta_id', '=', 'ventas.id')
-            ->where('devoluciones_ventas.estado', 'DEVUELTA')
-            ->whereBetween('devoluciones_ventas.fecha', [$inicio, $fin])
-            ->select('devoluciones_ventas.fecha', 'devoluciones_ventas.total', 'ventas.correlativo as venta_correlativo')
-            ->orderBy('devoluciones_ventas.fecha')
-            ->get()
-            ->map(function ($item, $index) {
-                $item->nro = $index + 1;
-                return $item;
-            });
-
-        // 4. Productos Dañados
+        // 3. Productos Dañados (incluye los generados por devoluciones con condición DANIADO)
         $daniados = DB::table('productos_daniados')
             ->join('productos', 'productos_daniados.producto_id', '=', 'productos.id')
             ->whereBetween('productos_daniados.fecha', [$inicio, $fin])
-            ->select('productos_daniados.fecha', 'productos.nombre as producto', 'productos_daniados.cantidad', 'productos_daniados.costo_unitario', 'productos_daniados.total_perdida')
+            ->select(
+                'productos_daniados.fecha',
+                'productos.nombre as producto',
+                'productos_daniados.cantidad',
+                'productos_daniados.costo_unitario',
+                'productos_daniados.total_perdida'
+            )
             ->orderBy('productos_daniados.fecha')
             ->get()
             ->map(function ($item, $index) {
                 $item->nro = $index + 1;
+
                 return $item;
             });
 
         // Totales para el resumen
-        $totalCompras      = $compras->sum('total');
-        $totalVentas       = $ventas->sum('total');
-        $totalDevoluciones = $devoluciones->sum('total');
-        $totalPerdidas     = $daniados->sum('total_perdida');
-        $gananciaNeta      = $totalVentas - $totalCompras - $totalDevoluciones - $totalPerdidas;
+        $totalCompras = $compras->sum('total');
+        $totalVentas = $ventas->sum('total');
+        $totalPerdidas = $daniados->sum('total_perdida');
+        $gananciaNeta = $totalVentas - $totalCompras - $totalPerdidas;
 
         // Generar PDF
         $pdf = Pdf::loadView('reportes.General', compact(
             'config', 'inicio', 'fin',
-            'compras', 'ventas', 'devoluciones', 'daniados',
-            'totalCompras', 'totalVentas', 'totalDevoluciones', 'totalPerdidas', 'gananciaNeta'
+            'compras', 'ventas', 'daniados',
+            'totalCompras', 'totalVentas', 'totalPerdidas', 'gananciaNeta'
         ));
 
-        // Opciones de DomPDF
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
 
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
-        // Nuevo pie de página
         $this->agregarPiePagina($pdf);
 
         return $pdf->stream("reporte-general-{$inicio}-{$fin}.pdf");
@@ -132,15 +125,15 @@ class ReporteController extends Controller
     public function ventas(Request $request)
     {
         $request->validate([
-            'fecha_inicio'  => 'required|date',
-            'fecha_fin'     => 'required|date|after_or_equal:fecha_inicio',
-            'tipo_cliente'  => 'nullable|string|in:DETALLES,MAYORISTA',
-            'metodo_pago_id'=> 'nullable|integer|exists:metodos_pagos,id',
-            'estado'        => 'nullable|string|in:PAGADA,CREDITO,DEVOLUCION,ANULADA',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'tipo_cliente' => 'nullable|string|in:DETALLES,MAYORISTA',
+            'metodo_pago_id' => 'nullable|integer|exists:metodos_pagos,id',
+            'estado' => 'nullable|string|in:PAGADA,CREDITO,DEVOLUCION,ANULADA',
         ]);
 
         $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
+        $fin = $request->fecha_fin;
 
         // Filtros activos para mostrar en el PDF
         $filtrosActivos = [];
@@ -186,26 +179,35 @@ class ReporteController extends Controller
 
         $ventas = $ventasQuery->orderBy('ventas.fecha')->get();
 
-        // Numeración correlativa para la tabla
-        $ventas = $ventas->map(function ($item, $index) {
+        $idsVentas = $ventas->pluck('id');
+
+        // --- 2. DEVOLUCIONES POR VENTA (agrupadas) ---
+        $devolucionesPorVenta = collect();
+        if ($idsVentas->isNotEmpty()) {
+            $devolucionesPorVenta = DB::table('devoluciones_ventas')
+                ->whereIn('venta_id', $idsVentas)
+                ->where('estado', 'DEVUELTA')
+                ->select('venta_id', DB::raw('SUM(total) as total_devuelto'))
+                ->groupBy('venta_id')
+                ->pluck('total_devuelto', 'venta_id');
+        }
+
+        // Numeración correlativa + asignar devolución y neto por venta
+        $ventas = $ventas->map(function ($item, $index) use ($devolucionesPorVenta) {
             $item->nro = $index + 1;
+            $item->total_devolucion = (float) ($devolucionesPorVenta[$item->id] ?? 0);
+            $item->total_neto = (float) $item->total - $item->total_devolucion;
+
             return $item;
         });
 
-        // --- 2. CALCULAR TOTAL DE VENTAS (excluye ANULADA porque ya no están) ---
+        // --- 3. TOTAL DE VENTAS (excluye ANULADA) ---
         $totalVentas = (float) $ventas->sum('total');
 
-        // --- 3. CALCULAR TOTAL DE DEVOLUCIONES asociadas a las ventas mostradas ---
-        $idsVentas = $ventas->pluck('id');
-        $totalDevoluciones = 0;
-        if ($idsVentas->isNotEmpty()) {
-            $totalDevoluciones = (float) DB::table('devoluciones_ventas')
-                ->whereIn('venta_id', $idsVentas)
-                ->where('devoluciones_ventas.estado', 'DEVUELTA')
-                ->sum('devoluciones_ventas.total');
-        }
+        // --- 4. TOTAL DE DEVOLUCIONES (agrupadas por venta) ---
+        $totalDevoluciones = (float) $ventas->sum('total_devolucion');
 
-        // --- 4. CALCULAR DINERO PENDIENTE EN CRÉDITOS (solo para ventas CREDITO mostradas) ---
+        // --- 5. DINERO PENDIENTE EN CRÉDITOS ---
         $idsVentasCredito = $ventas->where('estado', 'CREDITO')->pluck('id');
         $totalPendiente = 0;
         if ($idsVentasCredito->isNotEmpty()) {
@@ -215,20 +217,25 @@ class ReporteController extends Controller
                 ->value('pendiente');
         }
 
-        // --- 5. TOTALES FINALES ---
+        // --- 6. TOTALES FINALES ---
         $cantidadVentas = $ventas->count();
         $totalFinanciero = $totalVentas - $totalDevoluciones;
-        $mostrarTotalFinanciero = !$request->filled('estado') || $request->estado === 'PAGADA';
+        $mostrarTotalFinanciero = ! $request->filled('estado') || $request->estado === 'PAGADA';
+        $mostrarTotalVentas = !in_array($request->estado, ['CREDITO', 'ANULADA', 'DEVOLUCION']);
+        $sinFiltros = ! $request->filled('tipo_cliente')
+        && ! $request->filled('metodo_pago_id')
+        && ! $request->filled('estado');
 
-        // --- 6. GENERAR PDF ---
+        // --- 7. GENERAR PDF ---
         $pdf = Pdf::loadView('reportes.Ventas', compact(
             'config', 'inicio', 'fin',
             'ventas', 'totalVentas', 'totalDevoluciones', 'totalPendiente',
-            'cantidadVentas', 'totalFinanciero', 'filtrosActivos', 'mostrarTotalFinanciero'
+            'cantidadVentas', 'totalFinanciero', 'filtrosActivos',
+            'mostrarTotalFinanciero', 'mostrarTotalVentas', 'sinFiltros'
         ));
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
@@ -241,12 +248,12 @@ class ReporteController extends Controller
     {
         $request->validate([
             'fecha_inicio' => 'required|date',
-            'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
             'proveedor_id' => 'nullable|integer|exists:proveedores,id',
         ]);
 
         $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
+        $fin = $request->fecha_fin;
 
         // Filtros activos
         $filtrosActivos = [];
@@ -278,7 +285,7 @@ class ReporteController extends Controller
             ->join('productos', 'detalle_compras.producto_id', '=', 'productos.id')
             ->leftJoin('lotes', function ($join) {
                 $join->on('lotes.compra_id', '=', 'detalle_compras.compra_id')
-                     ->on('lotes.producto_id', '=', 'detalle_compras.producto_id');
+                    ->on('lotes.producto_id', '=', 'detalle_compras.producto_id');
             })
             ->whereIn('detalle_compras.compra_id', $compraIds)
             ->select(
@@ -297,6 +304,7 @@ class ReporteController extends Controller
         $compras = $compras->map(function ($item, $index) use ($detallesCompras) {
             $item->nro = $index + 1;
             $item->detalles = $detallesCompras->get($item->id, collect());
+
             return $item;
         });
 
@@ -309,9 +317,9 @@ class ReporteController extends Controller
             'compras', 'totalCompras', 'filtrosActivos'
         ));
 
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
@@ -323,19 +331,22 @@ class ReporteController extends Controller
     public function creditos(Request $request)
     {
         $request->validate([
-            'fecha_inicio'      => 'required|date',
-            'fecha_fin'         => 'required|date|after_or_equal:fecha_inicio',
-            'cliente_credito_id'=> 'nullable|integer|exists:clientes_creditos,id',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'cliente_credito_id' => 'nullable|integer|exists:clientes_creditos,id',
         ]);
 
         $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
+        $fin = $request->fecha_fin;
 
         // Filtros activos
         $filtrosActivos = [];
         if ($request->filled('cliente_credito_id')) {
             $cliente = DB::table('clientes_creditos')->find($request->cliente_credito_id);
             $filtrosActivos['Cliente'] = $cliente ? $cliente->nombre : $request->cliente_credito_id;
+        }
+        if ($request->filled('estado')) {
+        $filtrosActivos['Estado'] = $request->estado;
         }
 
         $config = Configuracion::first();
@@ -360,25 +371,30 @@ class ReporteController extends Controller
         if ($request->filled('cliente_credito_id')) {
             $creditosQuery->where('clientes_creditos.id', $request->cliente_credito_id);
         }
+        if ($request->filled('estado')) {
+        $creditosQuery->where('creditos.estado', $request->estado);
+        }
 
         $creditos = $creditosQuery->get();
 
         // Agrupar por cliente
         $clientesAgrupados = $creditos->groupBy('cliente_id')->map(function ($creditosCliente, $clienteId) {
             $cliente = $creditosCliente->first();
+
             return [
-                'nombre'   => $cliente->cliente,
-                'dui'      => $cliente->dui,
+                'nombre' => $cliente->cliente,
+                'dui' => $cliente->dui,
                 'creditos' => $creditosCliente->map(function ($item, $index) {
                     $item->nro = $index + 1;
                     $item->pendiente = $item->monto_adeudado - $item->saldo;
+
                     return $item;
                 }),
             ];
         });
 
         // Totales
-        $totalAdeudado  = $creditos->sum('monto_adeudado');
+        $totalAdeudado = $creditos->sum('monto_adeudado');
         $totalPendiente = $creditos->sum(function ($c) {
             return $c->monto_adeudado - $c->saldo;
         });
@@ -391,9 +407,9 @@ class ReporteController extends Controller
             'cantidadCreditos', 'filtrosActivos'
         ));
 
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
@@ -406,17 +422,17 @@ class ReporteController extends Controller
     {
         $request->validate([
             'fecha_inicio' => 'required|date',
-            'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
-            'origen'       => 'nullable|string|in:VENTA,DIRECTO,VENCIMIENTO,PROVEEDOR',
-            'estado'       => 'nullable|string|in:REGISTRADO,RECHAZADO,DEVOLUCION,ANULADO',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'origen' => 'nullable|string|in:VENTA,DIRECTO,VENCIMIENTO,PROVEEDOR',
+            'estado' => 'nullable|string|in:REGISTRADO,RECHAZADO,DEVOLUCION,ANULADO',
         ]);
 
         $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
+        $fin = $request->fecha_fin;
 
         $filtrosActivos = [];
         if ($request->filled('origen')) {
-            $filtrosActivos['Origen'] = match($request->origen) {
+            $filtrosActivos['Origen'] = match ($request->origen) {
                 'VENTA' => 'Devolución',
                 'DIRECTO' => 'Manual',
                 'VENCIMIENTO' => 'Vencimiento',
@@ -455,19 +471,20 @@ class ReporteController extends Controller
 
         $daniados = $daniadosQuery->get()->map(function ($item, $index) {
             $item->nro = $index + 1;
-            $item->origen = match($item->origen) {
+            $item->origen = match ($item->origen) {
                 'VENTA' => 'Devolución',
                 'DIRECTO' => 'Manual',
                 'VENCIMIENTO' => 'Vencimiento',
                 'PROVEEDOR' => 'Proveedor',
                 default => 'Desconocido',
             };
+
             return $item;
         })->groupBy('origen');
 
         $totales = [
-            'totalPerdida'     => $daniados->flatten(1)->sum('total_perdida'),
-            'totalCantidad'    => $daniados->flatten(1)->sum('cantidad'),
+            'totalPerdida' => $daniados->flatten(1)->sum('total_perdida'),
+            'totalCantidad' => $daniados->flatten(1)->sum('cantidad'),
             'cantidadDaniados' => $daniados->flatten(1)->count(),
         ];
 
@@ -476,9 +493,9 @@ class ReporteController extends Controller
             'daniados', 'totales', 'filtrosActivos'
         ));
 
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
@@ -491,9 +508,9 @@ class ReporteController extends Controller
     {
         $request->validate([
             'seccion' => 'nullable|string|in:TIENDA,LIBRERIA,MEDICAMENTO',
-            'marca_id'     => 'nullable|integer|exists:marcas,id',
+            'marca_id' => 'nullable|integer|exists:marcas,id',
             'categoria_id' => 'nullable|integer|exists:categorias,id',
-            'estado'       => 'nullable|string|in:ACTIVO,INACTIVO',
+            'estado' => 'nullable|string|in:ACTIVO,INACTIVO',
         ]);
 
         // Filtros activos
@@ -551,13 +568,14 @@ class ReporteController extends Controller
         $productos = $productosQuery->get()->map(function ($item, $index) {
             $item->nro = $index + 1;
             $item->stock_bajo = $item->stock <= $item->stock_minimo;
+
             return $item;
         });
 
         // Totales
-        $totalProductos  = $productos->count();
-        $totalStock      = $productos->sum('stock');
-        $productosBajos  = $productos->where('stock_bajo', true)->count();
+        $totalProductos = $productos->count();
+        $totalStock = $productos->sum('stock');
+        $productosBajos = $productos->where('stock_bajo', true)->count();
 
         // Generar PDF
         $pdf = Pdf::loadView('reportes.Inventario', compact(
@@ -566,15 +584,15 @@ class ReporteController extends Controller
             'filtrosActivos'
         ));
 
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
         $this->agregarPiePagina($pdf);
 
-        return $pdf->stream("reporte-inventario.pdf");
+        return $pdf->stream('reporte-inventario.pdf');
     }
 
     public function cierreDiario(Request $request)
@@ -603,6 +621,7 @@ class ReporteController extends Controller
             ->map(function ($item, $index) {
                 $item->nro = $index + 1;
                 $item->hora = date('H:i:s', strtotime($item->fecha));
+
                 return $item;
             });
 
@@ -623,6 +642,7 @@ class ReporteController extends Controller
             ->map(function ($item, $index) {
                 $item->nro = $index + 1;
                 $item->hora = date('H:i:s', strtotime($item->fecha));
+
                 return $item;
             });
 
@@ -646,6 +666,7 @@ class ReporteController extends Controller
             ->map(function ($item, $index) {
                 $item->nro = $index + 1;
                 $item->hora = date('H:i:s', strtotime($item->fecha));
+
                 return $item;
             });
 
@@ -664,16 +685,17 @@ class ReporteController extends Controller
             ->get()
             ->map(function ($item, $index) {
                 $item->nro = $index + 1;
+
                 return $item;
             });
 
         // --- Totales ---
-        $totalEfectivo      = $efectivo->sum('total');
+        $totalEfectivo = $efectivo->sum('total');
         $totalTransferencia = $transferencia->sum('total');
-        $totalCredito       = $credito->sum('total');
-        $totalDevoluciones  = $devoluciones->sum('total');
-        $totalVentas        = $totalEfectivo + $totalTransferencia + $totalCredito;
-        $totalNeto          = $totalVentas - $totalDevoluciones;
+        $totalCredito = $credito->sum('total');
+        $totalDevoluciones = $devoluciones->sum('total');
+        $totalVentas = $totalEfectivo + $totalTransferencia + $totalCredito;
+        $totalNeto = $totalVentas - $totalDevoluciones;
 
         // Generar PDF
         $pdf = Pdf::loadView('reportes.CierreDiario', compact(
@@ -683,9 +705,9 @@ class ReporteController extends Controller
             'totalDevoluciones', 'totalVentas', 'totalNeto'
         ));
 
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
@@ -698,12 +720,12 @@ class ReporteController extends Controller
     {
         $request->validate([
             'fecha_inicio' => 'required|date',
-            'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
-            'estado'       => 'nullable|string|in:PENDIENTE,ACEPTADO,RECHAZADO,ANULADO',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'estado' => 'nullable|string|in:PENDIENTE,ACEPTADO,RECHAZADO,ANULADO',
         ]);
 
         $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
+        $fin = $request->fecha_fin;
 
         $filtrosActivos = [];
         if ($request->filled('estado')) {
@@ -727,7 +749,7 @@ class ReporteController extends Controller
                 'cambios_productos.estado',
                 'lotes.codigo_lote as lote',
                 'pr.nombre as producto_reemplazo',
-                DB::raw("CAST(CASE WHEN cambios_productos.producto_reemplazo_id IS NOT NULL THEN 1 ELSE 0 END AS INTEGER) as tiene_reemplazo")
+                DB::raw('CAST(CASE WHEN cambios_productos.producto_reemplazo_id IS NOT NULL THEN 1 ELSE 0 END AS INTEGER) as tiene_reemplazo')
             )
             ->orderBy('cambios_productos.fecha');
 
@@ -737,6 +759,7 @@ class ReporteController extends Controller
 
         $cambios = $cambiosQuery->get()->map(function ($item, $index) {
             $item->nro = $index + 1;
+
             return $item;
         });
 
@@ -747,27 +770,31 @@ class ReporteController extends Controller
         });
 
         $totales = [
-            'cantidadTotal'          => $cambios->count(),
-            'totalCantidad'          => $cambios->sum('cantidad'),
-            'cantidadConReemplazo'   => $cambios->where('tiene_reemplazo', 1)->sum('cantidad'),
-            'cantidadSinReemplazo'   => $cambios->where('tiene_reemplazo', 0)->count(),
-            'totalPerdida'           => $cambios->where('estado', 'RECHAZADO')->sum('total_perdida'),
-            'cantidadPendientes'     => $cambios->where('estado', 'PENDIENTE')->count(),
+            'cantidadTotal' => $cambios->count(),
+            'totalCantidad' => $cambios->sum('cantidad'),
+            'cantidadConReemplazo' => $cambios->where('tiene_reemplazo', 1)->sum('cantidad'),
+            'cantidadSinReemplazo' => $cambios->where('tiene_reemplazo', 0)->count(),
+            'totalPerdida' => $cambios->where('estado', 'RECHAZADO')->sum('total_perdida'),
+            'cantidadPendientes' => $cambios->where('estado', 'PENDIENTE')->count(),
             'totalPendienteCantidad' => $cambios->where('estado', 'PENDIENTE')->sum('cantidad'),
-            'totalPendienteCosto'    => $cambios->where('estado', 'PENDIENTE')->sum('total_perdida'),
-            'cantidadAceptados'      => $cambios->where('estado', 'ACEPTADO')->count(),
-            'cantidadRechazados'     => $cambios->where('estado', 'RECHAZADO')->count(),
-            'cantidadAnulados'       => $cambios->where('estado', 'ANULADO')->count(),
+            'totalPendienteCosto' => $cambios->where('estado', 'PENDIENTE')->sum('total_perdida'),
+            'cantidadAceptados' => $cambios->where('estado', 'ACEPTADO')->count(),
+            'cantidadRechazados' => $cambios->where('estado', 'RECHAZADO')->count(),
+            'cantidadAnulados' => $cambios->where('estado', 'ANULADO')->count(),
         ];
+
+        $mostrarTotalPerdida = ! $request->filled('estado') || $request->estado === 'RECHAZADO';
+        $filtradoPorRechazados = $request->estado === 'RECHAZADO';
 
         $pdf = Pdf::loadView('reportes.CambioProducto', compact(
             'config', 'inicio', 'fin',
-            'agrupados', 'totales', 'filtrosActivos'
+            'agrupados', 'totales', 'filtrosActivos',
+            'mostrarTotalPerdida', 'filtradoPorRechazados'
         ));
 
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
@@ -780,12 +807,12 @@ class ReporteController extends Controller
     {
         $request->validate([
             'fecha_inicio' => 'required|date',
-            'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
-            'estado'       => 'nullable|string|in:DEVUELTA,ANULADA,PERFECTO,DANIADO',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'estado' => 'nullable|string|in:DEVUELTA,ANULADA,PERFECTO,DANIADO',
         ]);
 
         $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
+        $fin = $request->fecha_fin;
         $estado = $request->estado;
 
         $filtrosActivos = [];
@@ -824,10 +851,12 @@ class ReporteController extends Controller
 
         $perfectos = $detalles->where('condicion', 'PERFECTO')->values()->map(function ($item, $index) {
             $item->nro = $index + 1;
+
             return $item;
         });
         $danados = $detalles->where('condicion', 'DANIADO')->values()->map(function ($item, $index) {
             $item->nro = $index + 1;
+
             return $item;
         });
 
@@ -835,6 +864,7 @@ class ReporteController extends Controller
         if ($estado === 'DEVUELTA' || $estado === 'ANULADA') {
             $todos = $detalles->map(function ($item, $index) {
                 $item->nro = $index + 1;
+
                 return $item;
             });
         }
@@ -853,9 +883,9 @@ class ReporteController extends Controller
         }
 
         $cantidadPerfectos = $perfectos->sum('cantidad');
-        $cantidadDanados   = $danados->sum('cantidad');
-        $totalPerfectos    = $perfectos->sum('subtotal');
-        $totalDanados      = $danados->sum('subtotal');
+        $cantidadDanados = $danados->sum('cantidad');
+        $totalPerfectos = $perfectos->sum('subtotal');
+        $totalDanados = $danados->sum('subtotal');
 
         $pdf = Pdf::loadView('reportes.Devoluciones', compact(
             'config', 'inicio', 'fin',
@@ -864,9 +894,9 @@ class ReporteController extends Controller
             'totalPerfectos', 'totalDanados', 'filtrosActivos'
         ));
 
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 

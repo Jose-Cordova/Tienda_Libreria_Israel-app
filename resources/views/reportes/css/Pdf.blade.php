@@ -1,6 +1,11 @@
 <style>
+    /* ✅ Forzar que el padding no expanda los elementos */
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
     @page {
-    margin: 100px 2.5cm 60px 2.5cm;
+        margin: 100px 1.5cm 60px 1.5cm;
     }
 
     body {
@@ -10,12 +15,26 @@
         margin: 0;
     }
 
+    /* ── PIE DE PÁGINA FIJO ── */
+    .footer-pdf {
+        position: fixed;
+        bottom: -45px;
+        left: 0;
+        right: 0;
+        width: 100%;
+        font-size: 9px;
+        color: #666;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
     /* ── ENCABEZADO ── */
     .header-table {
         width: 100%;
         border-bottom: 3px solid #0a3622;
         padding-bottom: 12px;
-        margin-bottom: 20px;
+        margin-bottom: 22px;
         border-collapse: collapse;
     }
     .header-table td {
@@ -24,7 +43,7 @@
         vertical-align: top;
     }
     .empresa {
-        font-size: 18px;
+        font-size: 19px;
         font-weight: bold;
         color: #0a3622;
     }
@@ -38,7 +57,7 @@
         color: #333;
     }
     .reporte-titulo {
-        font-size: 14px;
+        font-size: 16px;
         font-weight: bold;
         color: #0a3622;
         letter-spacing: 1px;
@@ -46,16 +65,16 @@
     .reporte-periodo {
         font-size: 10px;
         color: #888;
-        margin-top: 2px;
+        margin-top: 3px;
     }
 
     /* ── SECCIÓN ── */
     .seccion-titulo {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: bold;
-        margin-top: 24px;
+        margin-top: 22px;
         margin-bottom: 0px;
-        padding: 6px 10px;
+        padding: 7px 10px;
         background-color: #0a3622;
         color: #ffffff;
         letter-spacing: 0.5px;
@@ -85,9 +104,13 @@
     }
     th {
         background-color: #c6e5d3;
-        font-size: 10px;
+        font-size: 11px;
         color: #0a3622;
         text-align: left;
+        font-weight: bold;
+    }
+    td {
+        font-size: 11px;
     }
     tr:nth-child(even) td {
         background-color: #f9f9f9;
@@ -130,11 +153,12 @@
         color: #0a3622;
     }
 
-    /* ── RESUMEN FINAL (bloque atómico, no se corte entre páginas) ── */
+    /* ── RESUMEN FINAL ── */
     .resumen-wrapper {
         width: 100%;
         border-collapse: collapse;
         page-break-inside: avoid;
+        margin-top: 24px;
     }
     .resumen-wrapper > tbody > tr {
         page-break-inside: avoid;
@@ -144,7 +168,6 @@
         padding: 0;
     }
     .resumen-contenido {
-        margin-top: 30px;
         border-top: 2px solid #0a3622;
         padding-top: 10px;
     }

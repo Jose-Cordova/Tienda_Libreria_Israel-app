@@ -45,6 +45,7 @@
             @endphp
 
             @if($estado === 'ACEPTADO')
+                {{-- Tabla ACEPTADO (con Producto Reemplazo, SIN Total Pérdida) --}}
                 <table>
                     <thead>
                         <tr>
@@ -54,7 +55,6 @@
                             <th>Producto Reemplazo</th>
                             <th class="text-center">Cant.</th>
                             <th class="text-right">Costo Unit.</th>
-                            <th class="text-right">Total Pérdida</th>
                             <th>Lote</th>
                         </tr>
                     </thead>
@@ -67,13 +67,13 @@
                             <td>{{ $cp->producto_reemplazo ?? '-' }}</td>
                             <td class="text-center">{{ $cp->cantidad }}</td>
                             <td class="text-right">${{ number_format($cp->costo_unitario, 2) }}</td>
-                            <td class="text-right">${{ number_format($cp->total_perdida, 2) }}</td>
                             <td>{{ $cp->lote ?? '-' }}</td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
-            @else
+            @elseif($estado === 'RECHAZADO')
+                {{-- Tabla RECHAZADO (CON Total Pérdida) --}}
                 <table>
                     <thead>
                         <tr>
@@ -100,17 +100,58 @@
                         @endforeach
                     </tbody>
                 </table>
+            @else
+                {{-- Tabla PENDIENTE / ANULADO (SIN Total Pérdida) --}}
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="text-center">N°</th>
+                            <th>Fecha</th>
+                            <th>Producto</th>
+                            <th class="text-center">Cant.</th>
+                            <th class="text-right">Costo Unit.</th>
+                            <th>Lote</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($registros as $cp)
+                        <tr>
+                            <td class="text-center">{{ $cp->nro }}</td>
+                            <td>{{ $cp->fecha }}</td>
+                            <td>{{ $cp->producto }}</td>
+                            <td class="text-center">{{ $cp->cantidad }}</td>
+                            <td class="text-right">${{ number_format($cp->costo_unitario, 2) }}</td>
+                            <td>{{ $cp->lote ?? '-' }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             @endif
         @endforeach
     @endif
 
-    <!-- RESUMEN (solo filas con valores > 0) -->
-    <table class="resumen-wrapper">
-        <tbody>
-            <tr>
-                <td>
-                    <div class="resumen-contenido">
-                        <table style="width: 60%; margin-left: auto;">
+<!-- RESUMEN -->
+<table class="resumen-wrapper">
+    <tbody>
+        <tr>
+            <td>
+                <div class="resumen-contenido">
+                    <table style="width: 60%; margin-left: auto;">
+
+                        @if($filtradoPorRechazados)
+                            {{-- ✅ Solo cuando se filtra por RECHAZADO --}}
+                            <tr>
+                                <td><strong>Cambios rechazados</strong></td>
+                                <td class="text-right">{{ $totales['cantidadRechazados'] }}</td>
+                            </tr>
+                            <tr class="total-final">
+                                <td><strong>TOTAL PÉRDIDA</strong></td>
+                                <td class="text-right negativo">
+                                    <strong>${{ number_format($totales['totalPerdida'], 2) }}</strong>
+                                </td>
+                            </tr>
+                        @else
+                            {{-- Resto de casos (sin filtro o filtro distinto de RECHAZADO) --}}
                             @if($totales['cantidadConReemplazo'] > 0)
                             <tr>
                                 <td><strong>Cambio con producto diferente</strong></td>
@@ -150,7 +191,7 @@
                             </tr>
                             @endif
 
-                            @if($totales['totalPerdida'] > 0)
+                            @if($mostrarTotalPerdida && $totales['totalPerdida'] > 0)
                             <tr class="total-final">
                                 <td><strong>TOTAL PÉRDIDA (RECHAZADOS)</strong></td>
                                 <td class="text-right negativo">
@@ -158,11 +199,13 @@
                                 </td>
                             </tr>
                             @endif
-                        </table>
-                    </div>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+                        @endif
+
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
 </body>
 </html>
