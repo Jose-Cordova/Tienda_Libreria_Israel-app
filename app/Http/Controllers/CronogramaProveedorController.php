@@ -66,7 +66,9 @@ class CronogramaProveedorController extends Controller
             $validator = Validator::make($request->all(), [
                 'proveedor_id' => 'required|exists:proveedores,id',
                 'fecha' => 'required|date|after_or_equal:today',
-                'contenido' => 'required|string|max:255'
+                'contenido' => 'required|string|min:5|max:255'
+            ], [
+                'contenido.min' => 'La descripción debe tener al menos 5 caracteres.' //Mensaje en español
             ]);
 
             //Si falla la validacion retornamos el error
@@ -136,7 +138,9 @@ class CronogramaProveedorController extends Controller
             $validator = Validator::make($request->all(), [
                 'proveedor_id' => 'sometimes|exists:proveedores,id',
                 'fecha' => 'sometimes|date|after_or_equal:today',
-                'contenido' => 'sometimes|string|max:255'
+                'contenido' => 'sometimes|string|min:5|max:255'
+            ], [
+                'contenido.min' => 'La descripción debe tener al menos 5 caracteres.' //Mensaje en español
             ]);
 
             //Si falla la validacion retornamos el error
