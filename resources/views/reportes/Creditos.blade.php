@@ -34,11 +34,13 @@
     <!-- CRÉDITOS AGRUPADOS POR CLIENTE -->
     @if(count($clientesAgrupados) > 0)
         @foreach($clientesAgrupados as $cliente)
-            <div class="seccion-titulo">{{ $cliente['nombre'] }} (DUI: {{ $cliente['dui'] }})</div>
+            <div class="seccion-titulo">
+                {{ $cliente['nombre'] }}@if(!empty($cliente['dui'])) (DUI: {{ $cliente['dui'] }})@endif
+            </div>
             <table>
                 <thead>
                     <tr>
-                        <th>N°</th>
+                        <th class="text-center">N°</th>
                         <th>Venta</th>
                         <th class="text-right">Monto Adeudado</th>
                         <th class="text-right">Saldo Abonado</th>

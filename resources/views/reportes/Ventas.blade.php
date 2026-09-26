@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     @include('reportes.css.Pdf')
 
-    {{-- ✅ Estilos específicos para el Reporte de Ventas (sobrescriben el CSS compartido) --}}
+    {{-- ✅ Estilos específicos para el Reporte de Ventas --}}
     <style>
         .header-table {
             padding-bottom: 14px;
@@ -74,8 +74,10 @@
                     <th>Método</th>
                     <th>Estado</th>
                     <th class="text-right">Total</th>
-                    <th class="text-right">Devolución</th>
-                    <th class="text-right">Neto</th>
+                    @if($sinFiltros)
+                        <th class="text-right">Devolución</th>
+                        <th class="text-right">Neto</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -88,10 +90,12 @@
                     <td>{{ $v->metodo }}</td>
                     <td>{{ $v->estado }}</td>
                     <td class="text-right">${{ number_format($v->total, 2) }}</td>
-                    <td class="text-right {{ $v->total_devolucion > 0 ? 'negativo' : '' }}">
-                        {{ $v->total_devolucion > 0 ? '$' . number_format($v->total_devolucion, 2) : '-' }}
-                    </td>
-                    <td class="text-right">${{ number_format($v->total_neto, 2) }}</td>
+                    @if($sinFiltros)
+                        <td class="text-right {{ $v->total_devolucion > 0 ? 'negativo' : '' }}">
+                            {{ $v->total_devolucion > 0 ? '$' . number_format($v->total_devolucion, 2) : '-' }}
+                        </td>
+                        <td class="text-right">${{ number_format($v->total_neto, 2) }}</td>
+                    @endif
                 </tr>
                 @endforeach
             </tbody>
@@ -110,22 +114,29 @@
                                 <td><strong>Cantidad de Ventas</strong></td>
                                 <td class="text-right">{{ $cantidadVentas }}</td>
                             </tr>
+
+                            {{-- ✅ Total Ventas solo si NO se filtra por CREDITO --}}
+                            @if($mostrarTotalVentas)
                             <tr>
                                 <td><strong>Total Ventas</strong></td>
                                 <td class="text-right">${{ number_format($totalVentas, 2) }}</td>
                             </tr>
+                            @endif
+
                             @if($totalDevoluciones > 0)
                             <tr>
                                 <td><strong>Total Devoluciones</strong></td>
                                 <td class="text-right negativo">${{ number_format($totalDevoluciones, 2) }}</td>
                             </tr>
                             @endif
+
                             @if($totalPendiente > 0)
                             <tr>
                                 <td><strong>Dinero Pendiente en Créditos</strong></td>
                                 <td class="text-right alerta">${{ number_format($totalPendiente, 2) }}</td>
                             </tr>
                             @endif
+
                             @if($mostrarTotalFinanciero)
                             <tr class="total-final">
                                 <td><strong>TOTAL FINANCIERO</strong></td>
