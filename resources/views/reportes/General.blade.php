@@ -71,30 +71,6 @@
         </table>
     @endif
 
-    @if($devoluciones->isNotEmpty())
-        <div class="seccion-titulo">DEVOLUCIONES</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>N°</th>
-                    <th>Fecha</th>
-                    <th>Venta</th>
-                    <th class="text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($devoluciones as $d)
-                <tr>
-                    <td class="text-center">{{ $d->nro }}</td>
-                    <td>{{ $d->fecha }}</td>
-                    <td>{{ $d->venta_correlativo }}</td>
-                    <td class="text-right">${{ number_format($d->total, 2) }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
-
     @if($daniados->isNotEmpty())
         <div class="seccion-titulo">PRODUCTOS DAÑADOS</div>
         <table>
@@ -123,44 +99,45 @@
         </table>
     @endif
 
-    <!-- RESUMEN (bloque atómico, se manda completo a la siguiente página si no cabe) -->
-    <table class="resumen-wrapper">
-        <tbody>
-            <tr>
-                <td>
-                    <div class="resumen-contenido">
-                        <table style="width: 60%; margin-left: auto;">
-                            <tr>
-                                <td><strong>Total Compras</strong></td>
-                                <td class="text-right">${{ number_format($totalCompras, 2) }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Total Ventas</strong></td>
-                                <td class="text-right">${{ number_format($totalVentas, 2) }}</td>
-                            </tr>
-                            @if($devoluciones->isNotEmpty())
-                            <tr>
-                                <td><strong>Total Devoluciones</strong></td>
-                                <td class="text-right negativo">${{ number_format($totalDevoluciones, 2) }}</td>
-                            </tr>
-                            @endif
-                            @if($daniados->isNotEmpty())
-                            <tr>
-                                <td><strong>Total Pérdidas por Daños</strong></td>
-                                <td class="text-right negativo">${{ number_format($totalPerdidas, 2) }}</td>
-                            </tr>
-                            @endif
-                            <tr class="total-final">
-                                <td><strong>GANANCIA NETA</strong></td>
-                                <td class="text-right {{ $gananciaNeta >= 0 ? 'ganancia-positiva' : 'ganancia-negativa' }}">
-                                    <strong>${{ number_format($gananciaNeta, 2) }}</strong>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <!-- RESUMEN -->
+<table class="resumen-wrapper">
+    <tbody>
+        <tr>
+            <td>
+                <div class="resumen-contenido">
+                    <table style="width: 60%; margin-left: auto;">
+                        @if($compras->isNotEmpty())
+                        <tr>
+                            <td><strong>Total Compras</strong></td>
+                            <td class="text-right">${{ number_format($totalCompras, 2) }}</td>
+                        </tr>
+                        @endif
+
+                        @if($ventas->isNotEmpty())
+                        <tr>
+                            <td><strong>Total Ventas</strong></td>
+                            <td class="text-right">${{ number_format($totalVentas, 2) }}</td>
+                        </tr>
+                        @endif
+
+                        @if($daniados->isNotEmpty())
+                        <tr>
+                            <td><strong>Total Pérdidas por Daños</strong></td>
+                            <td class="text-right negativo">${{ number_format($totalPerdidas, 2) }}</td>
+                        </tr>
+                        @endif
+
+                        <tr class="total-final">
+                            <td><strong>GANANCIA NETA</strong></td>
+                            <td class="text-right {{ $gananciaNeta >= 0 ? 'ganancia-positiva' : 'ganancia-negativa' }}">
+                                <strong>${{ number_format($gananciaNeta, 2) }}</strong>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
 </body>
 </html>

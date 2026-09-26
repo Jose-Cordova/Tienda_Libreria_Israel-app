@@ -39,203 +39,201 @@ class ReporteController extends Controller
     }
 
     public function general(Request $request)
-    {
-        $request->validate([
-            'fecha_inicio' => 'required|date',
-            'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
-        ]);
+{
+    $request->validate([
+        'fecha_inicio' => 'required|date',
+        'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
+    ]);
 
-        $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
+    $inicio = $request->fecha_inicio;
+    $fin    = $request->fecha_fin;
 
-        // Datos de la tienda para el encabezado
-        $config = Configuracion::first();
+    // Datos de la tienda para el encabezado
+    $config = Configuracion::first();
 
-        // 1. Compras
-        $compras = DB::table('compras')
-            ->join('proveedores', 'compras.proveedor_id', '=', 'proveedores.id')
-            ->whereBetween('compras.fecha_registro', [$inicio, $fin])
-            ->select('compras.fecha_registro as fecha', 'proveedores.nombre as proveedor', 'compras.total')
-            ->orderBy('compras.fecha_registro')
-            ->get()
-            ->map(function ($item, $index) {
-                $item->nro = $index + 1;
-                return $item;
-            });
-
-        // 2. Ventas (solo PAGADA)
-        $ventas = DB::table('ventas')
-            ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
-            ->where('ventas.estado', 'PAGADA')
-            ->whereBetween('ventas.fecha', [$inicio, $fin])
-            ->select('ventas.correlativo', 'ventas.fecha', 'ventas.total', 'metodos_pagos.nombre as metodo')
-            ->orderBy('ventas.fecha')
-            ->get()
-            ->map(function ($item, $index) {
-                $item->nro = $index + 1;
-                return $item;
-            });
-
-        // 3. Devoluciones (solo DEVUELTA)
-        $devoluciones = DB::table('devoluciones_ventas')
-            ->join('ventas', 'devoluciones_ventas.venta_id', '=', 'ventas.id')
-            ->where('devoluciones_ventas.estado', 'DEVUELTA')
-            ->whereBetween('devoluciones_ventas.fecha', [$inicio, $fin])
-            ->select('devoluciones_ventas.fecha', 'devoluciones_ventas.total', 'ventas.correlativo as venta_correlativo')
-            ->orderBy('devoluciones_ventas.fecha')
-            ->get()
-            ->map(function ($item, $index) {
-                $item->nro = $index + 1;
-                return $item;
-            });
-
-        // 4. Productos Dañados
-        $daniados = DB::table('productos_daniados')
-            ->join('productos', 'productos_daniados.producto_id', '=', 'productos.id')
-            ->whereBetween('productos_daniados.fecha', [$inicio, $fin])
-            ->select('productos_daniados.fecha', 'productos.nombre as producto', 'productos_daniados.cantidad', 'productos_daniados.costo_unitario', 'productos_daniados.total_perdida')
-            ->orderBy('productos_daniados.fecha')
-            ->get()
-            ->map(function ($item, $index) {
-                $item->nro = $index + 1;
-                return $item;
-            });
-
-        // Totales para el resumen
-        $totalCompras      = $compras->sum('total');
-        $totalVentas       = $ventas->sum('total');
-        $totalDevoluciones = $devoluciones->sum('total');
-        $totalPerdidas     = $daniados->sum('total_perdida');
-        $gananciaNeta      = $totalVentas - $totalCompras - $totalDevoluciones - $totalPerdidas;
-
-        // Generar PDF
-        $pdf = Pdf::loadView('reportes.General', compact(
-            'config', 'inicio', 'fin',
-            'compras', 'ventas', 'devoluciones', 'daniados',
-            'totalCompras', 'totalVentas', 'totalDevoluciones', 'totalPerdidas', 'gananciaNeta'
-        ));
-
-        // Opciones de DomPDF
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
-
-        $pdf->setPaper('A4', 'portrait');
-        $pdf->render();
-
-        // Nuevo pie de página
-        $this->agregarPiePagina($pdf);
-
-        return $pdf->stream("reporte-general-{$inicio}-{$fin}.pdf");
-    }
-
-    public function ventas(Request $request)
-    {
-        $request->validate([
-            'fecha_inicio'  => 'required|date',
-            'fecha_fin'     => 'required|date|after_or_equal:fecha_inicio',
-            'tipo_cliente'  => 'nullable|string|in:DETALLES,MAYORISTA',
-            'metodo_pago_id'=> 'nullable|integer|exists:metodos_pagos,id',
-            'estado'        => 'nullable|string|in:PAGADA,CREDITO,DEVOLUCION,ANULADA',
-        ]);
-
-        $inicio = $request->fecha_inicio;
-        $fin    = $request->fecha_fin;
-
-        // Filtros activos para mostrar en el PDF
-        $filtrosActivos = [];
-        if ($request->filled('tipo_cliente')) {
-            $filtrosActivos['Tipo de cliente'] = $request->tipo_cliente;
-        }
-        if ($request->filled('metodo_pago_id')) {
-            $metodo = DB::table('metodos_pagos')->find($request->metodo_pago_id);
-            $filtrosActivos['Método de pago'] = $metodo ? $metodo->nombre : $request->metodo_pago_id;
-        }
-        if ($request->filled('estado')) {
-            $filtrosActivos['Estado'] = $request->estado;
-        }
-
-        $config = Configuracion::first();
-
-        // --- 1. OBTENER VENTAS (sin detalles) ---
-        $ventasQuery = DB::table('ventas')
-            ->leftJoin('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
-            ->whereBetween('ventas.fecha', [$inicio, $fin])
-            ->select(
-                'ventas.id',
-                'ventas.correlativo',
-                'ventas.fecha',
-                'ventas.total',
-                'ventas.tipo_cliente',
-                'ventas.estado',
-                DB::raw("COALESCE(metodos_pagos.nombre, 'Crédito') as metodo")
-            );
-
-        if ($request->filled('tipo_cliente')) {
-            $ventasQuery->where('ventas.tipo_cliente', $request->tipo_cliente);
-        }
-        if ($request->filled('metodo_pago_id')) {
-            $ventasQuery->where('ventas.metodo_pago_id', $request->metodo_pago_id);
-        }
-        if ($request->filled('estado')) {
-            $ventasQuery->where('ventas.estado', $request->estado);
-        } else {
-            // Por defecto, excluir ventas ANULADA del reporte
-            $ventasQuery->where('ventas.estado', '!=', 'ANULADA');
-        }
-
-        $ventas = $ventasQuery->orderBy('ventas.fecha')->get();
-
-        // Numeración correlativa para la tabla
-        $ventas = $ventas->map(function ($item, $index) {
+    // 1. Compras
+    $compras = DB::table('compras')
+        ->join('proveedores', 'compras.proveedor_id', '=', 'proveedores.id')
+        ->whereBetween('compras.fecha_registro', [$inicio, $fin])
+        ->select('compras.fecha_registro as fecha', 'proveedores.nombre as proveedor', 'compras.total')
+        ->orderBy('compras.fecha_registro')
+        ->get()
+        ->map(function ($item, $index) {
             $item->nro = $index + 1;
             return $item;
         });
 
-        // --- 2. CALCULAR TOTAL DE VENTAS (excluye ANULADA porque ya no están) ---
-        $totalVentas = (float) $ventas->sum('total');
+    // 2. Ventas (solo PAGADA)
+    $ventas = DB::table('ventas')
+        ->join('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+        ->where('ventas.estado', 'PAGADA')
+        ->whereBetween('ventas.fecha', [$inicio, $fin])
+        ->select('ventas.correlativo', 'ventas.fecha', 'ventas.total', 'metodos_pagos.nombre as metodo')
+        ->orderBy('ventas.fecha')
+        ->get()
+        ->map(function ($item, $index) {
+            $item->nro = $index + 1;
+            return $item;
+        });
 
-        // --- 3. CALCULAR TOTAL DE DEVOLUCIONES asociadas a las ventas mostradas ---
-        $idsVentas = $ventas->pluck('id');
-        $totalDevoluciones = 0;
-        if ($idsVentas->isNotEmpty()) {
-            $totalDevoluciones = (float) DB::table('devoluciones_ventas')
-                ->whereIn('venta_id', $idsVentas)
-                ->where('devoluciones_ventas.estado', 'DEVUELTA')
-                ->sum('devoluciones_ventas.total');
-        }
+    // 3. Productos Dañados (incluye los generados por devoluciones con condición DANIADO)
+    $daniados = DB::table('productos_daniados')
+        ->join('productos', 'productos_daniados.producto_id', '=', 'productos.id')
+        ->whereBetween('productos_daniados.fecha', [$inicio, $fin])
+        ->select(
+            'productos_daniados.fecha',
+            'productos.nombre as producto',
+            'productos_daniados.cantidad',
+            'productos_daniados.costo_unitario',
+            'productos_daniados.total_perdida'
+        )
+        ->orderBy('productos_daniados.fecha')
+        ->get()
+        ->map(function ($item, $index) {
+            $item->nro = $index + 1;
+            return $item;
+        });
 
-        // --- 4. CALCULAR DINERO PENDIENTE EN CRÉDITOS (solo para ventas CREDITO mostradas) ---
-        $idsVentasCredito = $ventas->where('estado', 'CREDITO')->pluck('id');
-        $totalPendiente = 0;
-        if ($idsVentasCredito->isNotEmpty()) {
-            $totalPendiente = (float) DB::table('creditos')
-                ->whereIn('creditos.venta_id', $idsVentasCredito)
-                ->selectRaw('SUM(creditos.monto_adeudado - creditos.saldo) as pendiente')
-                ->value('pendiente');
-        }
+    // Totales para el resumen
+    $totalCompras  = $compras->sum('total');
+    $totalVentas   = $ventas->sum('total');
+    $totalPerdidas = $daniados->sum('total_perdida');
+    $gananciaNeta  = $totalVentas - $totalCompras - $totalPerdidas;
 
-        // --- 5. TOTALES FINALES ---
-        $cantidadVentas = $ventas->count();
-        $totalFinanciero = $totalVentas - $totalDevoluciones;
-        $mostrarTotalFinanciero = !$request->filled('estado') || $request->estado === 'PAGADA';
+    // Generar PDF
+    $pdf = Pdf::loadView('reportes.General', compact(
+        'config', 'inicio', 'fin',
+        'compras', 'ventas', 'daniados',
+        'totalCompras', 'totalVentas', 'totalPerdidas', 'gananciaNeta'
+    ));
 
-        // --- 6. GENERAR PDF ---
-        $pdf = Pdf::loadView('reportes.Ventas', compact(
-            'config', 'inicio', 'fin',
-            'ventas', 'totalVentas', 'totalDevoluciones', 'totalPendiente',
-            'cantidadVentas', 'totalFinanciero', 'filtrosActivos', 'mostrarTotalFinanciero'
-        ));
-        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-        $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
-        $pdf->setPaper('A4', 'portrait');
-        $pdf->render();
+    $pdf->getDomPDF()->set_option("isPhpEnabled", true);
+    $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
+    $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
 
-        $this->agregarPiePagina($pdf);
+    $pdf->setPaper('A4', 'portrait');
+    $pdf->render();
 
-        return $pdf->stream("reporte-ventas-{$inicio}-{$fin}.pdf");
+    $this->agregarPiePagina($pdf);
+
+    return $pdf->stream("reporte-general-{$inicio}-{$fin}.pdf");
+}
+
+    public function ventas(Request $request)
+{
+    $request->validate([
+        'fecha_inicio'  => 'required|date',
+        'fecha_fin'     => 'required|date|after_or_equal:fecha_inicio',
+        'tipo_cliente'  => 'nullable|string|in:DETALLES,MAYORISTA',
+        'metodo_pago_id'=> 'nullable|integer|exists:metodos_pagos,id',
+        'estado'        => 'nullable|string|in:PAGADA,CREDITO,DEVOLUCION,ANULADA',
+    ]);
+
+    $inicio = $request->fecha_inicio;
+    $fin    = $request->fecha_fin;
+
+    // Filtros activos para mostrar en el PDF
+    $filtrosActivos = [];
+    if ($request->filled('tipo_cliente')) {
+        $filtrosActivos['Tipo de cliente'] = $request->tipo_cliente;
     }
+    if ($request->filled('metodo_pago_id')) {
+        $metodo = DB::table('metodos_pagos')->find($request->metodo_pago_id);
+        $filtrosActivos['Método de pago'] = $metodo ? $metodo->nombre : $request->metodo_pago_id;
+    }
+    if ($request->filled('estado')) {
+        $filtrosActivos['Estado'] = $request->estado;
+    }
+
+    $config = Configuracion::first();
+
+    // --- 1. OBTENER VENTAS (sin detalles) ---
+    $ventasQuery = DB::table('ventas')
+        ->leftJoin('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+        ->whereBetween('ventas.fecha', [$inicio, $fin])
+        ->select(
+            'ventas.id',
+            'ventas.correlativo',
+            'ventas.fecha',
+            'ventas.total',
+            'ventas.tipo_cliente',
+            'ventas.estado',
+            DB::raw("COALESCE(metodos_pagos.nombre, 'Crédito') as metodo")
+        );
+
+    if ($request->filled('tipo_cliente')) {
+        $ventasQuery->where('ventas.tipo_cliente', $request->tipo_cliente);
+    }
+    if ($request->filled('metodo_pago_id')) {
+        $ventasQuery->where('ventas.metodo_pago_id', $request->metodo_pago_id);
+    }
+    if ($request->filled('estado')) {
+        $ventasQuery->where('ventas.estado', $request->estado);
+    } else {
+        // Por defecto, excluir ventas ANULADA del reporte
+        $ventasQuery->where('ventas.estado', '!=', 'ANULADA');
+    }
+
+    $ventas = $ventasQuery->orderBy('ventas.fecha')->get();
+
+    $idsVentas = $ventas->pluck('id');
+
+    // --- 2. DEVOLUCIONES POR VENTA (agrupadas) ---
+    $devolucionesPorVenta = collect();
+    if ($idsVentas->isNotEmpty()) {
+        $devolucionesPorVenta = DB::table('devoluciones_ventas')
+            ->whereIn('venta_id', $idsVentas)
+            ->where('estado', 'DEVUELTA')
+            ->select('venta_id', DB::raw('SUM(total) as total_devuelto'))
+            ->groupBy('venta_id')
+            ->pluck('total_devuelto', 'venta_id');
+    }
+
+    // Numeración correlativa + asignar devolución y neto por venta
+    $ventas = $ventas->map(function ($item, $index) use ($devolucionesPorVenta) {
+        $item->nro = $index + 1;
+        $item->total_devolucion = (float) ($devolucionesPorVenta[$item->id] ?? 0);
+        $item->total_neto = (float) $item->total - $item->total_devolucion;
+        return $item;
+    });
+
+    // --- 3. TOTAL DE VENTAS (excluye ANULADA) ---
+    $totalVentas = (float) $ventas->sum('total');
+
+    // --- 4. TOTAL DE DEVOLUCIONES (agrupadas por venta) ---
+    $totalDevoluciones = (float) $ventas->sum('total_devolucion');
+
+    // --- 5. DINERO PENDIENTE EN CRÉDITOS ---
+    $idsVentasCredito = $ventas->where('estado', 'CREDITO')->pluck('id');
+    $totalPendiente = 0;
+    if ($idsVentasCredito->isNotEmpty()) {
+        $totalPendiente = (float) DB::table('creditos')
+            ->whereIn('creditos.venta_id', $idsVentasCredito)
+            ->selectRaw('SUM(creditos.monto_adeudado - creditos.saldo) as pendiente')
+            ->value('pendiente');
+    }
+
+    // --- 6. TOTALES FINALES ---
+    $cantidadVentas = $ventas->count();
+    $totalFinanciero = $totalVentas - $totalDevoluciones;
+    $mostrarTotalFinanciero = !$request->filled('estado') || $request->estado === 'PAGADA';
+
+    // --- 7. GENERAR PDF ---
+    $pdf = Pdf::loadView('reportes.Ventas', compact(
+        'config', 'inicio', 'fin',
+        'ventas', 'totalVentas', 'totalDevoluciones', 'totalPendiente',
+        'cantidadVentas', 'totalFinanciero', 'filtrosActivos', 'mostrarTotalFinanciero'
+    ));
+    $pdf->getDomPDF()->set_option("isPhpEnabled", true);
+    $pdf->getDomPDF()->set_option("isHtml5ParserEnabled", true);
+    $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+    $pdf->setPaper('A4', 'portrait');
+    $pdf->render();
+
+    $this->agregarPiePagina($pdf);
+
+    return $pdf->stream("reporte-ventas-{$inicio}-{$fin}.pdf");
+}
 
     public function compras(Request $request)
     {
