@@ -37,7 +37,7 @@ class ProductoRequest extends FormRequest
             'categoria_id'     => ['required', 'exists:categorias,id'],
             'seccion'          => $isUpdate ? 'sometimes|in:TIENDA,LIBRERIA,MEDICAMENTO' : 'required|in:TIENDA,LIBRERIA,MEDICAMENTO',
             'nuevo_stock'      => 'nullable|integer|min:0',
-            'motivo_ajuste'    => 'required_with:nuevo_stock|nullable|string|min:4|max:255',
+            'motivo_ajuste'    => 'required_with:nuevo_stock|nullable|string|min:3|max:255',
             'lote_id'          => 'nullable|exists:lotes,id',
             // Nuevo lote opcional en edición
             'nuevo_lote'                    => 'nullable|array',
@@ -116,7 +116,7 @@ class ProductoRequest extends FormRequest
             'lotes.*.cantidad.integer'          => 'La cantidad del lote debe ser un número entero.',
             'lotes.*.cantidad.min'              => 'La cantidad de cada lote debe ser al menos 1.',
             'motivo_ajuste.required_with'       => 'El motivo del ajuste de stock es obligatorio al modificar el stock.',
-            'motivo_ajuste.min'                 => 'El motivo del ajuste debe tener al menos 4 caracteres.',
+            'motivo_ajuste.min'                 => 'El motivo del ajuste debe tener al menos 3 caracteres.',
             'nuevo_lote.codigo_lote.required_with' => 'El código del nuevo lote es obligatorio.',
             'nuevo_lote.codigo_lote.unique'        => 'Ya existe un lote registrado con ese código.',
             'nuevo_lote.fecha_vencimiento.required_with' => 'La fecha de vencimiento del nuevo lote es obligatoria.',
