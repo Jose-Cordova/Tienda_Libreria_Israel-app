@@ -148,13 +148,17 @@ class CompraController extends Controller
                 //Obtenemos los datos antes del incremento del stock
                 $stockAnterior = $producto->stock;
                 $cppAnterior = $producto->costo_promedio;
+                $precioDetalleAnterior = $producto->precio_detalle;
+                $precioMayorAnterior = $producto->precio_mayor;
                 //Calculamos los precios de venta al detalle y al mayor y actualizamos
                 $factorConversion = $detalle['factor_conversion'] ?? 1;
                 $precioUnitarioBase = $detalle['precio_unitario'] / $factorConversion;
+                //Stock sin costo conocido (creado desde Productos) no participa en el promedio
+                $stockPonderable = $cppAnterior > 0 ? $stockAnterior : 0;
                 //Aplicamos formula del CPP
-                $totalUnidadesNuevas = $stockAnterior + $cantidadTotal;
+                $totalUnidadesNuevas = $stockPonderable + $cantidadTotal;
                 if($totalUnidadesNuevas > 0){
-                    $nuevoCpp = (($stockAnterior * $cppAnterior) + ($cantidadTotal * $precioUnitarioBase)) / $totalUnidadesNuevas;
+                    $nuevoCpp = (($stockPonderable * $cppAnterior) + ($cantidadTotal * $precioUnitarioBase)) / $totalUnidadesNuevas;
                 }else{
                     $nuevoCpp = $precioUnitarioBase;
                 }
@@ -181,6 +185,9 @@ class CompraController extends Controller
                     'margen_detalle' => $detalle['margen_detalle'],
                     'margen_mayor' => $detalle['margen_mayor'],
                     'subtotal' => $subTotal,
+                    'cpp_anterior' => $cppAnterior,
+                    'precio_detalle_anterior' => $precioDetalleAnterior,
+                    'precio_mayor_anterior' => $precioMayorAnterior,
                     'compra_id' => $compra->id,
                     'producto_id' => $producto->id
                 ]);
@@ -306,27 +313,56 @@ class CompraController extends Controller
 
                     //Revertimos el stock
                     $unidades = $detalle->cantidad * $detalle->factor_conversion;
-                    //Calcular CPP inverso antes de anular
-                    $stockActual = $producto->stock;
-                    $stockOriginal = $stockActual - $unidades;
-                    $precioUnitarioBase = $detalle->precio_unitario / $detalle->factor_conversion;
 
-                    if($stockOriginal > 0){
-                        $nuevoCpp = (($stockActual * $producto->costo_promedio) - ($unidades * $precioUnitarioBase)) / $stockOriginal;
+                    //Ultima compra activa posterior a esta para el mismo producto
+                    $detallePosterior = DetalleCompra::where('producto_id', $producto->id)
+                        ->where('compra_id', '>', $compra->id)
+                        ->whereHas('compra', fn($q) => $q->where('estado', '!=', 'ANULADA'))
+                        ->orderByDesc('compra_id')
+                        ->first();
+
+                    if(is_null($detallePosterior) && !is_null($detalle->cpp_anterior)){
+                        //Es la ultima compra: restauramos el estado exacto previo
+                        $datosProducto = [
+                            'costo_promedio' => $detalle->cpp_anterior,
+                            'precio_detalle' => $detalle->precio_detalle_anterior,
+                            'precio_mayor' => $detalle->precio_mayor_anterior
+                        ];
                     }else{
-                        $nuevoCpp = 0;
+                        //Hay compras posteriores o no hay foto: calculamos el CPP inverso
+                        $stockActual = $producto->stock;
+                        $stockOriginal = $stockActual - $unidades;
+                        $precioUnitarioBase = $detalle->precio_unitario / $detalle->factor_conversion;
+
+                        $nuevoCpp = $stockOriginal > 0
+                            ? (($stockActual * $producto->costo_promedio) - ($unidades * $precioUnitarioBase)) / $stockOriginal
+                            : 0;
+
+                        //Las fotos de compras posteriores incluyen esta compra: ya no son validas
+                        DetalleCompra::where('producto_id', $producto->id)
+                            ->where('compra_id', '>', $compra->id)
+                            ->update([
+                                'cpp_anterior' => null,
+                                'precio_detalle_anterior' => null,
+                                'precio_mayor_anterior' => null
+                            ]);
+
+                        $datosProducto = [];
+                        if($nuevoCpp > 0){
+                            //Los precios vigentes los fijo la ultima compra activa
+                            $margenes = $detallePosterior ?? $detalle;
+                            $datosProducto = [
+                                'costo_promedio' => $nuevoCpp,
+                                'precio_detalle' => $nuevoCpp * (1 + $margenes->margen_detalle / 100),
+                                'precio_mayor' => $nuevoCpp * (1 + $margenes->margen_mayor / 100)
+                            ];
+                        }
                     }
 
-                    //Revertimos los precios de ventas y margenes de detalle
-                    $precioDetalle = $nuevoCpp * (1 + $detalle->margen_detalle / 100);
-                    $precioMayor = $nuevoCpp * (1 + $detalle->margen_mayor / 100);
-
                     $producto->decrement('stock', $unidades);
-                    $producto->update([
-                        'costo_promedio' => max(0, $nuevoCpp),
-                        'precio_detalle' => max(0, $precioDetalle),
-                        'precio_mayor' => max(0, $precioMayor)
-                    ]);
+                    if(!empty($datosProducto)){
+                        $producto->update($datosProducto);
+                    }
 
                     if($producto->perecedero === 'PERECEDERO'){
                         //Actualizamos solo los lotes que pertenecen a esa compra

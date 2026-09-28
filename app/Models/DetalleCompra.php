@@ -14,6 +14,9 @@ class DetalleCompra extends Model
         'margen_detalle',
         'margen_mayor',
         'subtotal',
+        'cpp_anterior',
+        'precio_detalle_anterior',
+        'precio_mayor_anterior',
         'compra_id',
         'producto_id'
     ];
