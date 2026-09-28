@@ -37,7 +37,7 @@ class CambioProductoRequest extends FormRequest
         return [
             'producto_id' => 'required|exists:productos,id',
             'cantidad'    => 'required|integer|min:1',
-            'descripcion' => 'required|string|max:255',
+            'descripcion' => 'required|string|min:3|max:255',
             'lote_id'     => 'nullable|exists:lotes,id',
         ];
     }
@@ -80,6 +80,19 @@ class CambioProductoRequest extends FormRequest
         } elseif ($this->tipo === 'mismo') {
             $productoRecibido = $registro?->producto;
         }
+        // Si se intenta seleccionar "mismo" lote, verificar que no provenga de VENCIMIENTO ni que el lote original esté vencido
+        if ($this->lote_opcion === 'mismo' && $registro) {
+            $loteOriginal = $registro->lote;
+            $esVencido = $registro->origen === 'VENCIMIENTO' || ($loteOriginal && $loteOriginal->fecha_vencimiento <= now()->toDateString());
+            if ($esVencido) {
+                $rules['lote_opcion'] = [
+                    function ($attribute, $value, $fail) {
+                        $fail('No se puede reponer en el mismo lote porque el lote original ya se encuentra vencido. Debe registrar un nuevo lote.');
+                    }
+                ];
+            }
+        }
+
         if ($productoRecibido?->perecedero === 'PERECEDERO' && $this->lote_opcion !== 'mismo') {
             $rules['codigo_lote']       = 'required|string|max:50|unique:lotes,codigo_lote';
             $rules['fecha_vencimiento'] = 'required|date|after:today';
@@ -101,7 +114,8 @@ class CambioProductoRequest extends FormRequest
             'producto_id.exists'    => 'El producto seleccionado no existe.',
             'cantidad.required'     => 'La cantidad es obligatoria.',
             'cantidad.min'          => 'La cantidad debe ser al menos 1.',
-            'descripcion.required'  => 'La descripción del cambio es obligatoria.',
+            'descripcion.required'  => 'El motivo del cambio es obligatorio.',
+            'descripcion.min'       => 'El motivo debe tener al menos 3 caracteres.',
             'lote_id.exists'        => 'El lote seleccionado no existe.',
             'tipo.required'         => 'Debe indicar el tipo de reemplazo.',
             'tipo.in'               => 'El tipo de reemplazo no es válido.',
