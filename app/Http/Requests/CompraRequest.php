@@ -7,6 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Models\Producto;
+use App\Models\Lote;
 
 class CompraRequest extends FormRequest
 {
@@ -15,13 +16,33 @@ class CompraRequest extends FormRequest
         //Verificar si el usuario actual esta autorizado para hacer esta accion
         return auth()->check();
     }
+    //Normalizamos los codigos de lote antes de validar (sin espacios y en mayusculas)
+    protected function prepareForValidation(): void
+    {
+        $detalles = $this->input('detalles');
+        if(!is_array($detalles)){
+            return;
+        }
+        foreach($detalles as $i => $detalle){
+            if(!empty($detalle['lotes']) && is_array($detalle['lotes'])){
+                foreach($detalle['lotes'] as $j => $lote){
+                    if(isset($lote['codigo_lote']) && is_string($lote['codigo_lote'])){
+                        $detalles[$i]['lotes'][$j]['codigo_lote'] = mb_strtoupper(trim($lote['codigo_lote']), 'UTF-8');
+                    }
+                }
+            }
+        }
+        $this->merge(['detalles' => $detalles]);
+    }
+
     //Definimos las reglas de validacion
     public function rules(): array
     {
         return [
             //Validacion para factura
-            'numero_factura' => 'required|string|max:50|unique:compras,numero_factura',
-            'codigo_factura' => 'required|string|max:50|unique:compras,codigo_factura',
+            //Maximo de caracteres del DTE: Nº de Control (31) y Código de Generación (36)
+            'numero_factura' => ['bail', 'required', 'string', 'max:31', 'unique:compras,numero_factura'],
+            'codigo_factura' => ['bail', 'required', 'string', 'max:36', 'unique:compras,codigo_factura'],
             'fecha_emision' => 'required|date',
             'proveedor_id' => 'required|exists:proveedores,id',
             //Validacion para los detalles de compras
@@ -57,6 +78,8 @@ class CompraRequest extends FormRequest
             $nombresNuevosEnCompra = [];
             // Consultamos los productos existentes en la base de datos de una sola vez
             $productosEnBd = Producto::select('id', 'nombre')->get();
+            // Codigos de lote usados en esta compra y el detalle donde aparecen (unicidad global)
+            $lotesEnCompra = [];
 
             // Recorremos cada producto del detalle enviado en la compra
             foreach($detalles as $index => $detalle){
@@ -138,6 +161,34 @@ class CompraRequest extends FormRequest
                     }else{
                         //Validamos cada lote del detalle
                         $lotesExistentes = [];
+                        //Vencimientos ya registrados por codigo para este producto (sin contar lotes anulados)
+                        $vencimientosEnBd = [];
+                        if(!is_null($productoId)){
+                            Lote::where('producto_id', $productoId)
+                                ->where(function($q){
+                                    $q->whereNull('motivo_inactivo')->orWhere('motivo_inactivo', '!=', 'ANULACION');
+                                })
+                                ->get(['codigo_lote', 'fecha_vencimiento'])
+                                ->each(function($l) use (&$vencimientosEnBd){
+                                    $vencimientosEnBd[mb_strtoupper(trim($l->codigo_lote), 'UTF-8')] = $l->fecha_vencimiento->toDateString();
+                                });
+                        }
+                        //Codigos de este detalle que ya pertenecen a otro producto (sin contar lotes anulados)
+                        $codigosDetalle = array_values(array_filter(array_column($detalle['lotes'], 'codigo_lote')));
+                        $lotesOtrosProductos = [];
+                        if(!empty($codigosDetalle)){
+                            $marcadores = implode(',', array_fill(0, count($codigosDetalle), '?'));
+                            Lote::with('producto:id,nombre')
+                                ->whereRaw("UPPER(TRIM(codigo_lote)) IN ($marcadores)", $codigosDetalle)
+                                ->when(!is_null($productoId), fn($q) => $q->where('producto_id', '!=', $productoId))
+                                ->where(function($q){
+                                    $q->whereNull('motivo_inactivo')->orWhere('motivo_inactivo', '!=', 'ANULACION');
+                                })
+                                ->get()
+                                ->each(function($l) use (&$lotesOtrosProductos){
+                                    $lotesOtrosProductos[mb_strtoupper(trim($l->codigo_lote), 'UTF-8')] = $l->producto->nombre ?? 'otro producto';
+                                });
+                        }
                         foreach($detalle['lotes'] as $loteIndex => $lote){
                             $numLote = $loteIndex + 1;
                             //Verificamos que no falte el codigo de lote
@@ -155,6 +206,34 @@ class CompraRequest extends FormRequest
                                     );
                                 }else{
                                     $lotesExistentes[] = $lote['codigo_lote'];
+                                }
+
+                                //Un mismo lote del proveedor no puede tener dos vencimientos distintos
+                                $vencimientoBd = $vencimientosEnBd[$lote['codigo_lote']] ?? null;
+                                if($vencimientoBd && !empty($lote['fecha_vencimiento'])
+                                    && substr($lote['fecha_vencimiento'], 0, 10) !== $vencimientoBd){
+                                    $validator->errors()->add(
+                                        "detalles.$index.lotes.$loteIndex.fecha_vencimiento",
+                                        "El lote '{$lote['codigo_lote']}' ya está registrado con vencimiento " . date('d/m/Y', strtotime($vencimientoBd)) . " en el detalle #$num."
+                                    );
+                                }
+
+                                //El codigo de lote es unico en todo el sistema: no puede pertenecer a otro producto
+                                if(isset($lotesOtrosProductos[$lote['codigo_lote']])){
+                                    $validator->errors()->add(
+                                        "detalles.$index.lotes.$loteIndex.codigo_lote",
+                                        "El lote '{$lote['codigo_lote']}' ya pertenece al producto '{$lotesOtrosProductos[$lote['codigo_lote']]}' (detalle #$num)."
+                                    );
+                                }
+                                //Tampoco puede repetirse entre productos distintos de esta misma compra
+                                $detalleConCodigo = $lotesEnCompra[$lote['codigo_lote']] ?? null;
+                                if(!is_null($detalleConCodigo) && $detalleConCodigo !== $num){
+                                    $validator->errors()->add(
+                                        "detalles.$index.lotes.$loteIndex.codigo_lote",
+                                        "El lote '{$lote['codigo_lote']}' ya se usa en el detalle #$detalleConCodigo de esta compra."
+                                    );
+                                }else{
+                                    $lotesEnCompra[$lote['codigo_lote']] = $num;
                                 }
                             }
 
@@ -224,8 +303,10 @@ class CompraRequest extends FormRequest
         return [
             'numero_factura.required' => 'El N° de Control es obligatorio.',
             'numero_factura.unique' => 'Ya existe una compra registrada con ese N° de Control en el sistema.',
+            'numero_factura.max' => 'El N° de Control admite máximo 31 caracteres.',
             'codigo_factura.required' => 'El Código de Generación es obligatorio.',
             'codigo_factura.unique' => 'Ya existe una compra registrada con ese Código de Generación en el sistema.',
+            'codigo_factura.max' => 'El Código de Generación admite máximo 36 caracteres.',
             'fecha_emision.required' => 'La fecha de emisión es obligatoria.',
             'fecha_emision.date' => 'La fecha de emisión no tiene un formato válido.',
             'proveedor_id.required' => 'Debe seleccionar un proveedor.',

@@ -254,6 +254,25 @@ class CompraController extends Controller
        //
     }
 
+    //Funcion para verificar si el Nº de Control o el Código de Generación ya estan registrados
+    public function verificarFactura(Request $request)
+    {
+        try{
+            $numeroFactura = $request->query('numero_factura');
+            $codigoFactura = $request->query('codigo_factura');
+
+            return response()->json([
+                'numero_factura_existe' => $numeroFactura ? Compra::where('numero_factura', $numeroFactura)->exists() : false,
+                'codigo_factura_existe' => $codigoFactura ? Compra::where('codigo_factura', $codigoFactura)->exists() : false
+            ], 200);
+
+        }catch(\Exception $e){
+            return response()->json([
+                'message' => 'Error al verificar la factura.'
+            ], 500);
+        }
+    }
+
     //Funcion para anular una compra
     public function anular(string $id)
     {
