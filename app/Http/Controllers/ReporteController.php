@@ -968,7 +968,7 @@ public function productosPorVencer(Request $request)
         ];
     })->values();
 
-    // Totales globales
+    // Totales Globales
     $totalProductos = $productosAgrupados->count();
     $totalLotes     = $productosAgrupados->sum('total_lotes');
     $totalUnidades  = $productosAgrupados->sum('total_unidades');
