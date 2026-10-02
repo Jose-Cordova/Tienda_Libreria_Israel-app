@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Venta;
-use App\Models\Credito;
-use App\Models\Producto;
-use App\Models\ClienteCredito;
-use App\Models\DetalleVenta;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Exception;
-use Illuminate\Validation\ValidationException;
 use App\Http\Requests\StoreVentaRequest;
+use App\Http\Requests\UpdateMetodoPagoVentaRequest;
+use App\Models\ClienteCredito;
+use App\Models\Credito;
+use App\Models\DetalleVenta;
+use App\Models\MetodoPago;
+use App\Models\Producto;
+use App\Models\Venta;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Exception;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VentaController extends Controller
 {
@@ -20,50 +23,50 @@ class VentaController extends Controller
      * Display a listing of the resource.
      */
     public function index(Request $request)
-{
-    try {
-        $request->validate([
-            'per_page' => 'nullable|integer|min:1|max:100'
-        ]);
+    {
+        try {
+            $request->validate([
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
 
-        $query = Venta::with([
-            'user',
-            'metodoPago',
-            'detalleVentas.producto',
-            'detalleVentas.lote',
-            'credito.clienteCredito'
-        ]);
+            $query = Venta::with([
+                'user',
+                'metodoPago',
+                'detalleVentas.producto',
+                'detalleVentas.lote',
+                'credito.clienteCredito',
+            ]);
 
-        if ($request->estado) {
-            $query->where('estado', $request->estado);
-        }
-        if ($request->user_id) {
-            $query->where('user_id', $request->user_id);
-        }
-        if ($request->tipoCliente) {
-            $query->where('tipo_cliente', $request->tipoCliente);
-        }
-        if ($request->estado_producto) {
-            $query->whereHas('detalleVentas.producto', function($q) use ($request) {
-                $q->where('estado', $request->estado_producto);
-            });
-        }
-        if ($request->metodo_pago_id) {
-            $query->where('metodo_pago_id', $request->metodo_pago_id);
-        }
-        if ($request->filled('correlativo')) {
-            $query->where('correlativo', $request->correlativo);
-        }
-        if ($request->fecha_inicio) {
-            $query->whereDate('fecha', '>=', $request->fecha_inicio);
-        }
-        if ($request->fecha_fin) {
-            $query->whereDate('fecha', '<=', $request->fecha_fin);
-        }
+            if ($request->estado) {
+                $query->where('estado', $request->estado);
+            }
+            if ($request->user_id) {
+                $query->where('user_id', $request->user_id);
+            }
+            if ($request->tipoCliente) {
+                $query->where('tipo_cliente', $request->tipoCliente);
+            }
+            if ($request->estado_producto) {
+                $query->whereHas('detalleVentas.producto', function ($q) use ($request) {
+                    $q->where('estado', $request->estado_producto);
+                });
+            }
+            if ($request->metodo_pago_id) {
+                $query->where('metodo_pago_id', $request->metodo_pago_id);
+            }
+            if ($request->filled('correlativo')) {
+                $query->where('correlativo', $request->correlativo);
+            }
+            if ($request->fecha_inicio) {
+                $query->whereDate('fecha', '>=', $request->fecha_inicio);
+            }
+            if ($request->fecha_fin) {
+                $query->whereDate('fecha', '<=', $request->fecha_fin);
+            }
 
-        // Calcular totales globales (ahora incluye DEVOLUCION)
-        $totalesQuery = clone $query;
-        $totales = $totalesQuery->selectRaw("
+            // Calcular totales globales (ahora incluye DEVOLUCION)
+            $totalesQuery = clone $query;
+            $totales = $totalesQuery->selectRaw("
             COUNT(*) as total_ventas,
             COUNT(CASE WHEN estado = 'PAGADA' THEN 1 END) as cantidad_pagadas,
             COALESCE(SUM(CASE WHEN estado = 'PAGADA' THEN total END), 0) as total_pagadas,
@@ -75,38 +78,38 @@ class VentaController extends Controller
             COALESCE(SUM(CASE WHEN estado = 'DEVOLUCION' THEN total END), 0) as total_devueltas
         ")->first();
 
-        $perPage = $request->get('per_page', 15);
-        $ventas = $query->orderBy('fecha', 'desc')->paginate($perPage);
+            $perPage = $request->get('per_page', 15);
+            $ventas = $query->orderBy('fecha', 'desc')->paginate($perPage);
 
-        $response = $ventas->toArray();
-        $response['totales'] = [
-            'pagadas' => [
-                'cantidad' => (int) $totales->cantidad_pagadas,
-                'total' => (float) $totales->total_pagadas,
-            ],
-            'credito' => [
-                'cantidad' => (int) $totales->cantidad_credito,
-                'total' => (float) $totales->total_credito,
-            ],
-            'anuladas' => [
-                'cantidad' => (int) $totales->cantidad_anuladas,
-                'total' => (float) $totales->total_anuladas,
-            ],
-            'devueltas' => [
-                'cantidad' => (int) $totales->cantidad_devueltas,
-                'total' => (float) $totales->total_devueltas,
-            ],
-        ];
+            $response = $ventas->toArray();
+            $response['totales'] = [
+                'pagadas' => [
+                    'cantidad' => (int) $totales->cantidad_pagadas,
+                    'total' => (float) $totales->total_pagadas,
+                ],
+                'credito' => [
+                    'cantidad' => (int) $totales->cantidad_credito,
+                    'total' => (float) $totales->total_credito,
+                ],
+                'anuladas' => [
+                    'cantidad' => (int) $totales->cantidad_anuladas,
+                    'total' => (float) $totales->total_anuladas,
+                ],
+                'devueltas' => [
+                    'cantidad' => (int) $totales->cantidad_devueltas,
+                    'total' => (float) $totales->total_devueltas,
+                ],
+            ];
 
-        return response()->json($response, 200);
+            return response()->json($response, 200);
 
-    } catch (Exception $e) {
-        return response()->json([
-            'message' => 'Error al mostrar las ventas',
-            'error' => $e->getMessage()
-        ], 500);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'Error al mostrar las ventas',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
 
     /**
      * Store a newly created resource in storage.
@@ -114,264 +117,272 @@ class VentaController extends Controller
     public function store(StoreVentaRequest $request)
     {
         $data = $request->validated();
-    try{
-        //iniciamos transaccion
-        DB::beginTransaction();
+        try {
+            // iniciamos transaccion
+            DB::beginTransaction();
 
-        //variable para almacenar total de venta
-        $totalVenta = 0;
+            // variable para almacenar total de venta
+            $totalVenta = 0;
 
-        //registramos venta
-        $venta = Venta::create([
-            'correlativo' => $this->generarCorrelativo(),
-            'fecha' => now(),
-            'total' => 0,
-            'monto_recibido' => $data['monto_recibido'] ?? null,
-            'tipo_cliente' => $data['tipo_cliente'],
-            'estado' => $data['estado'],
-            'metodo_pago_id'  => $data['metodo_pago_id'] ?? null,
-            'user_id' => $data['user_id']
-        ]);
+            // registramos venta
+            $venta = Venta::create([
+                'correlativo' => $this->generarCorrelativo(),
+                'fecha' => now(),
+                'total' => 0,
+                'monto_recibido' => $data['monto_recibido'] ?? null,
+                'tipo_cliente' => $data['tipo_cliente'],
+                'estado' => $data['estado'],
+                'metodo_pago_id' => $data['metodo_pago_id'] ?? null,
+                'user_id' => $data['user_id'],
+            ]);
 
-        //recorremos detalle para registrar detalle_ventas
-        foreach($data['detalle'] as $detalle){
+            // recorremos detalle para registrar detalle_ventas
+            foreach ($data['detalle'] as $detalle) {
 
-            //buscamos el producto
-            $producto = Producto::findOrFail($detalle['producto_id']);
+                // buscamos el producto
+                $producto = Producto::findOrFail($detalle['producto_id']);
 
-            //validamos stock general del producto
-            if($producto->stock < $detalle['cantidad']){
+                // validamos stock general del producto
+                if ($producto->stock < $detalle['cantidad']) {
 
-                DB::rollBack();
+                    DB::rollBack();
 
-                return response()->json([
-                    'message' => 'Stock insuficiente para el producto '. $producto->nombre . '  le queda la cantidad restante de  ' . $producto->stock
-                ], 400);
+                    return response()->json([
+                        'message' => 'Stock insuficiente para el producto '.$producto->nombre.'  le queda la cantidad restante de  '.$producto->stock,
+                    ], 400);
+                }
+
+                // validamos tipo de cliente para cambiar precio
+                $precio = $data['tipo_cliente'] == 'MAYORISTA'
+                    ? $producto->precio_mayor
+                    : $producto->precio_detalle;
+
+                // si el producto no es perecedero no necesita lote
+                if ($producto->perecedero == 'NORMAL') {
+
+                    // calculamos subtotal del detalle
+                    $subtotal = $precio * $detalle['cantidad'];
+
+                    // registramos detalle de venta
+                    DetalleVenta::create([
+                        'cantidad' => $detalle['cantidad'],
+                        'precio_unitario' => $precio,
+                        'subtotal' => $subtotal,
+                        'producto_id' => $producto->id,
+                        'lote_id' => null,
+                        'venta_id' => $venta->id,
+                    ]);
+
+                    // descontamos stock general del producto
+                    $nuevoStock = $producto->stock - $detalle['cantidad'];
+
+                    $producto->update([
+                        'stock' => $nuevoStock,
+                        'estado' => $nuevoStock <= 0 ? 'INACTIVO' : $producto->estado,
+                    ]);
+
+                    // sumamos subtotal al total venta
+                    $totalVenta += $subtotal;
+
+                } else {
+
+                    // cantidad restante a descontar
+                    $cantidadRestante = $detalle['cantidad'];
+
+                    // obtenemos lotes FIFO del producto
+                    $lotes = $producto->lotes()
+                        ->where('estado', 'ACTIVO')
+                        ->where('cantidad_actual', '>', 0)
+                        ->orderBy('fecha_ingreso', 'asc')
+                        ->get();
+
+                    // validamos existencia de lotes
+                    if ($lotes->isEmpty()) {
+
+                        DB::rollBack();
+
+                        return response()->json([
+                            'message' => 'No existen lotes disponibles para el producto '.$producto->nombre,
+                        ], 400);
+                    }
+
+                    // recorremos lotes para aplicar FIFO
+                    foreach ($lotes as $lote) {
+
+                        // omitimos lotes vencidos
+                        if ($lote->fecha_vencimiento < now()->toDateString()) {
+                            continue;
+                        }
+
+                        // si ya no queda cantidad salimos
+                        if ($cantidadRestante <= 0) {
+                            break;
+                        }
+
+                        // cantidad que descontaremos del lote actual
+                        $descuento = min($cantidadRestante, $lote->cantidad_actual);
+
+                        // calculamos subtotal del lote
+                        $subtotal = $precio * $descuento;
+
+                        // registramos detalle de venta
+                        DetalleVenta::create([
+                            'cantidad' => $descuento,
+                            'precio_unitario' => $precio,
+                            'subtotal' => $subtotal,
+                            'producto_id' => $producto->id,
+                            'lote_id' => $lote->id,
+                            'venta_id' => $venta->id,
+                        ]);
+
+                        // descontamos stock del lote
+                        $lote->cantidad_actual -= $descuento;
+
+                        // si el lote llega a 0 cambiamos estado
+                        if ($lote->cantidad_actual <= 0) {
+                            $lote->estado = 'INACTIVO';
+                            $lote->motivo_inactivo = 'AGOTADO';
+                        }
+
+                        $lote->save();
+
+                        // restamos cantidad restante
+                        $cantidadRestante -= $descuento;
+
+                        // sumamos subtotal al total venta
+                        $totalVenta += $subtotal;
+                    }
+
+                    // validamos si no se pudo cubrir toda la cantidad
+                    if ($cantidadRestante > 0) {
+
+                        DB::rollBack();
+
+                        return response()->json([
+                            'message' => 'Stock insuficiente en lotes para el producto '.$producto->nombre,
+                        ], 400);
+                    }
+
+                    // descontamos stock general del producto
+                    $nuevoStock = $producto->stock - $detalle['cantidad'];
+
+                    $producto->update([
+                        'stock' => $nuevoStock,
+                        'estado' => $nuevoStock <= 0 ? 'INACTIVO' : $producto->estado,
+                    ]);
+                }
+            }
+            // actualizamos total final de la venta
+            $venta->update([
+                'total' => $totalVenta,
+            ]);
+
+            // registramos credito si el estado de venta es credito
+            // registramos credito si el estado de venta es credito
+            if ($data['estado'] == 'CREDITO') {
+
+                // Validar que exista cliente o datos para registrar uno nuevo
+                if (
+                    empty($data['cliente_credito_id']) &&
+                    empty($data['nombre'])
+                ) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'message' => 'Debe seleccionar un cliente crédito o registrar uno nuevo',
+                    ], 400);
+                }
+
+                // Si no existe cliente_credito, lo registramos
+                if (empty($data['cliente_credito_id'])) {
+
+                    // Si envían DUI, validarlo (no es obligatorio)
+                    if (! empty($data['dui']) && ! $this->validarDui($data['dui'])) {
+                        DB::rollBack();
+
+                        return response()->json([
+                            'message' => 'El DUI ingresado ('.$data['dui'].') no es válido. Por favor, verifícalo.',
+                        ], 422);
+                    }
+
+                    $clienteCredito = ClienteCredito::create([
+                        'nombre' => $data['nombre'],
+                        'dui' => $data['dui'] ?? null,
+                        'telefono' => $data['telefono'] ?? null,
+                    ]);
+
+                } else {
+
+                    $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
+                }
+
+                // Registramos Crédito
+                Credito::create([
+                    'monto_adeudado' => $totalVenta,
+                    'saldo' => 0,
+                    'fecha_cancelada' => null,
+                    'cliente_credito_id' => $clienteCredito->id,
+                    'venta_id' => $venta->id,
+                ]);
             }
 
-            //validamos tipo de cliente para cambiar precio
-$precio = $data['tipo_cliente'] == 'MAYORISTA'
-    ? $producto->precio_mayor
-    : $producto->precio_detalle;
+            // confirmamos transaccion
+            DB::commit();
 
-//si el producto no es perecedero no necesita lote
-if($producto->perecedero == 'NORMAL'){
-
-    //calculamos subtotal del detalle
-    $subtotal = $precio * $detalle['cantidad'];
-
-    //registramos detalle de venta
-    DetalleVenta::create([
-        'cantidad' => $detalle['cantidad'],
-        'precio_unitario' => $precio,
-        'subtotal' => $subtotal,
-        'producto_id' => $producto->id,
-        'lote_id' => null,
-        'venta_id' => $venta->id
-    ]);
-
-        //descontamos stock general del producto
-    $nuevoStock = $producto->stock - $detalle['cantidad'];
-
-    $producto->update([
-        'stock' => $nuevoStock,
-        'estado' => $nuevoStock <= 0 ? 'INACTIVO' : $producto->estado
-    ]);
-
-    //sumamos subtotal al total venta
-    $totalVenta += $subtotal;
-
-}else{
-
-    //cantidad restante a descontar
-    $cantidadRestante = $detalle['cantidad'];
-
-    //obtenemos lotes FIFO del producto
-    $lotes = $producto->lotes()
-        ->where('estado', 'ACTIVO')
-        ->where('cantidad_actual', '>', 0)
-        ->orderBy('fecha_ingreso', 'asc')
-        ->get();
-
-    //validamos existencia de lotes
-    if($lotes->isEmpty()){
-
-        DB::rollBack();
-
-        return response()->json([
-            'message' => 'No existen lotes disponibles para el producto '.$producto->nombre
-        ], 400);
-    }
-
-    //recorremos lotes para aplicar FIFO
-    foreach($lotes as $lote){
-
-        //omitimos lotes vencidos
-        if($lote->fecha_vencimiento < now()->toDateString()){
-            continue;
-        }
-
-        //si ya no queda cantidad salimos
-        if($cantidadRestante <= 0){
-            break;
-        }
-
-        //cantidad que descontaremos del lote actual
-        $descuento = min($cantidadRestante, $lote->cantidad_actual);
-
-        //calculamos subtotal del lote
-        $subtotal = $precio * $descuento;
-
-        //registramos detalle de venta
-        DetalleVenta::create([
-            'cantidad' => $descuento,
-            'precio_unitario' => $precio,
-            'subtotal' => $subtotal,
-            'producto_id' => $producto->id,
-            'lote_id' => $lote->id,
-            'venta_id' => $venta->id
-        ]);
-
-        //descontamos stock del lote
-        $lote->cantidad_actual -= $descuento;
-
-        //si el lote llega a 0 cambiamos estado
-        if($lote->cantidad_actual <= 0){
-            $lote->estado = 'INACTIVO';
-            $lote->motivo_inactivo = 'AGOTADO';
-        }
-
-        $lote->save();
-
-        //restamos cantidad restante
-        $cantidadRestante -= $descuento;
-
-        //sumamos subtotal al total venta
-        $totalVenta += $subtotal;
-    }
-
-    //validamos si no se pudo cubrir toda la cantidad
-    if($cantidadRestante > 0){
-
-        DB::rollBack();
-
-        return response()->json([
-            'message' => 'Stock insuficiente en lotes para el producto '.$producto->nombre
-        ], 400);
-    }
-
-    //descontamos stock general del producto
-    $nuevoStock = $producto->stock - $detalle['cantidad'];
-
-    $producto->update([
-        'stock' => $nuevoStock,
-        'estado' => $nuevoStock <= 0 ? 'INACTIVO' : $producto->estado
-    ]);
-        }
-    }
-        //actualizamos total final de la venta
-        $venta->update([
-            'total' => $totalVenta
-        ]);
-
-        //registramos credito si el estado de venta es credito
-        //registramos credito si el estado de venta es credito
-    if($data['estado'] == 'CREDITO'){
-
-    // Validar que exista cliente o datos para registrar uno nuevo
-    if(
-        empty($data['cliente_credito_id']) &&
-        empty($data['nombre'])
-    ){
-        DB::rollBack();
-        return response()->json([
-            'message' => 'Debe seleccionar un cliente crédito o registrar uno nuevo'
-        ], 400);
-    }
-
-    // Si no existe cliente_credito, lo registramos
-    if(empty($data['cliente_credito_id'])){
-
-        // Si envían DUI, validarlo (no es obligatorio)
-        if (!empty($data['dui']) && !$this->validarDui($data['dui'])) {
-            DB::rollBack();
+            // retornamos respuesta exitosa
             return response()->json([
-                'message' => 'El DUI ingresado ('.$data['dui'].') no es válido. Por favor, verifícalo.'
-            ], 422);
+                'message' => 'Venta registrada correctamente',
+                'venta' => $venta->load([
+                    'user',
+                    'metodoPago',
+                    'detalleVentas.producto',
+                    'detalleVentas.lote',
+                    'credito',
+                ]),
+            ], 201);
+
+        } catch (Exception $e) {
+
+            // revertimos transaccion en caso de error
+            DB::rollBack();
+
+            // retornamos error
+            return response()->json([
+                'message' => 'Error al registrar la venta',
+                'error' => $e->getMessage(),
+            ], 500);
+
+        }
+    }
+
+    /**
+     * Valida un DUI de El Salvador (formato 12345678-9).
+     */
+    private function validarDui($dui)
+    {
+        // Formato: 8 digitos, guion y 1 dígito
+        if (! preg_match('/^\d{8}-\d{1}$/', $dui)) {
+            return false;
         }
 
-        $clienteCredito = ClienteCredito::create([
-            'nombre'   => $data['nombre'],
-            'dui'      => $data['dui'] ?? null,
-            'telefono' => $data['telefono'] ?? null,
-        ]);
+        $soloDigitos = str_replace('-', '', $dui);
 
-    } else {
+        if (preg_match('/^0+$/', $soloDigitos)) {
+            return false;
+        }
 
-        $clienteCredito = ClienteCredito::findOrFail($data['cliente_credito_id']);
-    }
+        $digitos = str_split(str_replace('-', '', $dui));
+        $factores = [9, 8, 7, 6, 5, 4, 3, 2];
+        $suma = 0;
 
-    // Registramos Crédito
-    Credito::create([
-        'monto_adeudado'    => $totalVenta,
-        'saldo'             => 0,
-        'fecha_cancelada'   => null,
-        'cliente_credito_id'=> $clienteCredito->id,
-        'venta_id'          => $venta->id
-    ]);
-}
+        for ($i = 0; $i < 8; $i++) {
+            $suma += (int) $digitos[$i] * $factores[$i];
+        }
 
-        //confirmamos transaccion
-        DB::commit();
+        $residuo = $suma % 10;
+        $digitoVerificador = (10 - $residuo) % 10; // Si el residuo es 0, el dígito será 0
 
-        //retornamos respuesta exitosa
-        return response()->json([
-            'message' => 'Venta registrada correctamente',
-            'venta' => $venta->load([
-                'user',
-                'metodoPago',
-                'detalleVentas.producto',
-                'detalleVentas.lote',
-                'credito'
-            ])
-        ], 201);
-
-    }catch(Exception $e){
-
-        //revertimos transaccion en caso de error
-        DB::rollBack();
-
-        //retornamos error
-        return response()->json([
-            'message' => 'Error al registrar la venta',
-            'error' => $e->getMessage()
-        ], 500);
-
-    }
-}
-
-/**
- * Valida un DUI de El Salvador (formato 12345678-9).
- */
-private function validarDui($dui)
-{
-    // Formato: 8 digitos, guion y 1 dígito
-    if (!preg_match('/^\d{8}-\d{1}$/', $dui)) {
-        return false;
-    }
-
-    $digitos = str_split(str_replace('-', '', $dui));
-    $factores = [9, 8, 7, 6, 5, 4, 3, 2];
-    $suma = 0;
-
-    for ($i = 0; $i < 8; $i++) {
-        $suma += (int)$digitos[$i] * $factores[$i];
-    }
-
-    $residuo = $suma % 10;
-    $digitoVerificador = (10 - $residuo) % 10; // Si el residuo es 0, el dígito será 0
-
-    return (int)$digitos[8] === $digitoVerificador;
+        return (int) $digitos[8] === $digitoVerificador;
     }
 
     /**
@@ -379,48 +390,101 @@ private function validarDui($dui)
      */
     public function show(string $id)
     {
-        try{
+        try {
 
-        //buscamos venta
-        $venta = Venta::with([
-            'user',
-            'metodoPago',
-            'detalleVentas.producto',
-            'detalleVentas.lote',
-            'credito.clienteCredito'
-        ])->findOrFail($id);
+            // buscamos venta
+            $venta = Venta::with([
+                'user',
+                'metodoPago',
+                'detalleVentas.producto',
+                'detalleVentas.lote',
+                'credito.clienteCredito',
+            ])->findOrFail($id);
 
-        //retornamos venta
-        return response()->json([
-            'venta' => $venta
-        ], 200);
+            // retornamos venta
+            return response()->json([
+                'venta' => $venta,
+            ], 200);
 
-    } catch (ValidationException $e) {
-    return response()->json([
-        'message' => 'Datos inválidos',
-        'errors' => $e->errors()
-    ], 422);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors(),
+            ], 422);
 
-} catch (\Illuminate\Database\QueryException $e) {
-    DB::rollBack();
-    // Si es error de unicidad en el DUI
-    if (str_contains($e->getMessage(), 'clientes_creditos_dui_unique')) {
-        return response()->json([
-            'message' => 'El DUI ya ha sido registrado.'
-        ], 422);
+        } catch (QueryException $e) {
+            DB::rollBack();
+            // Si es error de unicidad en el DUI
+            if (str_contains($e->getMessage(), 'clientes_creditos_dui_unique')) {
+                return response()->json([
+                    'message' => 'El DUI ya ha sido registrado.',
+                ], 422);
+            }
+
+            return response()->json([
+                'message' => 'Error en la base de datos',
+                'error' => $e->getMessage(),
+            ], 500);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Error al registrar la venta',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
-    return response()->json([
-        'message' => 'Error en la base de datos',
-        'error' => $e->getMessage()
-    ], 500);
 
-} catch (Exception $e) {
-    DB::rollBack();
-    return response()->json([
-        'message' => 'Error al registrar la venta',
-        'error' => $e->getMessage()
-    ], 500);
-}
+    /**
+     * Actualizar el método de pago de una venta registrada.
+     * Solo aplica para ventas en estado PAGADA.
+     */
+    public function updateMetodoPago(UpdateMetodoPagoVentaRequest $request, string $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $venta = Venta::findOrFail($id);
+
+            // Solo ventas PAGADAS pueden cambiar de método de pago
+            if ($venta->estado !== 'PAGADA') {
+                DB::rollBack();
+
+                return response()->json([
+                    'message' => 'Solo se puede cambiar el método de pago de ventas en estado PAGADA.',
+                ], 400);
+            }
+
+            $metodoNuevo = MetodoPago::findOrFail($request->metodo_pago_id);
+
+            // Actualizar método de pago y limpiar el monto recibido
+            $venta->metodo_pago_id = $metodoNuevo->id;
+            $venta->monto_recibido = null;
+            $venta->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Método de pago actualizado correctamente.',
+                'venta' => $venta->load(['metodoPago', 'user']),
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Venta no encontrada.',
+            ], 404);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Error al actualizar el método de pago.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -429,138 +493,142 @@ private function validarDui($dui)
     public function destroy(string $id)
     {
         try {
-        DB::beginTransaction();
+            DB::beginTransaction();
 
-        $venta = Venta::with(['detalleVentas.lote', 'credito'])->findOrFail($id);
+            $venta = Venta::with(['detalleVentas.lote', 'credito'])->findOrFail($id);
 
-        if ($venta->estado === 'ANULADA') {
-            return response()->json([
-                'message' => 'La venta ya está anulada.'
-            ], 400);
-        }
-
-        if (!in_array($venta->estado, ['PAGADA', 'CREDITO'])) {
-            return response()->json([
-                'message' => 'Solo se pueden anular ventas con estado PAGADA o CREDITO.'
-            ], 400);
-        }
-
-        if ($venta->credito && $venta->credito->saldo != 0) {
-            return response()->json([
-                'message' => 'No se puede anular la venta porque ya se han registrado abonos al crédito.'
-            ], 400);
-        }
-
-        foreach ($venta->detalleVentas as $detalle) {
-            $producto = $detalle->producto;
-            $cantidad = $detalle->cantidad;
-
-            $producto->increment('stock', $cantidad);
-
-            if ($detalle->lote_id && $detalle->lote) {
-                $lote = $detalle->lote;
-                $lote->cantidad_actual += $cantidad;
-                if ($lote->estado === 'INACTIVO' && $lote->cantidad_actual > 0) {
-                    $lote->estado = 'ACTIVO';
-                    $lote->motivo_inactivo = null; // Limpiar motivo de inactivación
-                }
-                $lote->save();
+            if ($venta->estado === 'ANULADA') {
+                return response()->json([
+                    'message' => 'La venta ya está anulada.',
+                ], 400);
             }
+
+            if (! in_array($venta->estado, ['PAGADA', 'CREDITO'])) {
+                return response()->json([
+                    'message' => 'Solo se pueden anular ventas con estado PAGADA o CREDITO.',
+                ], 400);
+            }
+
+            if ($venta->credito && $venta->credito->saldo != 0) {
+                return response()->json([
+                    'message' => 'No se puede anular la venta porque ya se han registrado abonos al crédito.',
+                ], 400);
+            }
+
+            foreach ($venta->detalleVentas as $detalle) {
+                $producto = $detalle->producto;
+                $cantidad = $detalle->cantidad;
+
+                $producto->increment('stock', $cantidad);
+
+                if ($detalle->lote_id && $detalle->lote) {
+                    $lote = $detalle->lote;
+                    $lote->cantidad_actual += $cantidad;
+                    if ($lote->estado === 'INACTIVO' && $lote->cantidad_actual > 0) {
+                        $lote->estado = 'ACTIVO';
+                        $lote->motivo_inactivo = null; // Limpiar motivo de inactivación
+                    }
+                    $lote->save();
+                }
+            }
+
+            if ($venta->credito) {
+                $venta->credito->delete();
+            }
+
+            $venta->update(['estado' => 'ANULADA']);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Venta anulada correctamente.',
+                'venta' => $venta->fresh([
+                    'user',
+                    'metodoPago',
+                    'detalleVentas.producto',
+                    'detalleVentas.lote',
+                    'credito',
+                ]),
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Venta no encontrada.',
+            ], 404);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Error al anular la venta.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        if ($venta->credito) {
-            $venta->credito->delete();
-        }
-
-        $venta->update(['estado' => 'ANULADA']);
-
-        DB::commit();
-
-        return response()->json([
-            'message' => 'Venta anulada correctamente.',
-            'venta' => $venta->fresh([
-                'user',
-                'metodoPago',
-                'detalleVentas.producto',
-                'detalleVentas.lote',
-                'credito'
-            ])
-        ], 200);
-
-    } catch (ModelNotFoundException $e) {
-        DB::rollBack();
-        return response()->json([
-            'message' => 'Venta no encontrada.'
-        ], 404);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json([
-            'message' => 'Error al anular la venta.',
-            'error' => $e->getMessage()
-        ], 500);
     }
-    }
+
     private function generarCorrelativo()
     {
-    $year = now()->format('Y');
-    $month = now()->format('m');
+        $year = now()->format('Y');
+        $month = now()->format('m');
 
-    $ultimo = Venta::whereYear('fecha', $year)
-        ->whereMonth('fecha', $month)
-        ->count();
+        $ultimo = Venta::whereYear('fecha', $year)
+            ->whereMonth('fecha', $month)
+            ->count();
 
-    $numero = str_pad($ultimo + 1, 4, '0', STR_PAD_LEFT);
+        $numero = str_pad($ultimo + 1, 4, '0', STR_PAD_LEFT);
 
-    return $year . $month . $numero;
+        return $year.$month.$numero;
     }
+
     public function ticket($id)
-{
-    // Configuración de la tienda
-    $config = DB::table('configuracion')->first();
+    {
+        // Configuración de la tienda
+        $config = DB::table('configuracion')->first();
 
-    // Venta (con método de pago y usuario)
-    $venta = DB::table('ventas')
-                ->leftJoin('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
-                ->join('users', 'ventas.user_id', '=', 'users.id')
-                ->where('ventas.id', $id)
-                ->select('ventas.*', 'metodos_pagos.nombre as metodo_pago', 'users.name as vendedor')
-                ->first();
+        // Venta (con método de pago y usuario)
+        $venta = DB::table('ventas')
+            ->leftJoin('metodos_pagos', 'ventas.metodo_pago_id', '=', 'metodos_pagos.id')
+            ->join('users', 'ventas.user_id', '=', 'users.id')
+            ->where('ventas.id', $id)
+            ->select('ventas.*', 'metodos_pagos.nombre as metodo_pago', 'users.name as vendedor')
+            ->first();
 
-    if (!$venta) {
-        abort(404);
+        if (! $venta) {
+            abort(404);
+        }
+
+        // Detalles AGRUPADOS por producto (evita líneas duplicadas por lote)
+        $detalles = DB::table('detalle_ventas')
+            ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
+            ->where('detalle_ventas.venta_id', $id)
+            ->select(
+                'productos.nombre as producto',
+                DB::raw('SUM(detalle_ventas.cantidad) as cantidad'),
+                DB::raw('ROUND(MAX(detalle_ventas.precio_unitario), 2) as precio_unitario'),
+                DB::raw('ROUND(SUM(detalle_ventas.subtotal), 2) as subtotal')
+            )
+            ->groupBy('productos.id', 'productos.nombre')
+            ->get();
+
+        // Información del crédito (si existe) – ahora incluye el DUI
+        $credito = DB::table('creditos')
+            ->join('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
+            ->where('creditos.venta_id', $id)
+            ->select(
+                'clientes_creditos.nombre as cliente',
+                'clientes_creditos.dui',
+                'creditos.monto_adeudado'
+            )
+            ->first();
+
+        // Generar PDF
+        $pdf = Pdf::loadView('tickets.venta', compact('config', 'venta', 'detalles', 'credito'));
+
+        // Configurar tamaño del papel (80mm de ancho, alto automático)
+        $pdf->setPaper([0, 0, 226.77, 400], 'portrait'); // 80mm ≈ 226.77px
+
+        return $pdf->stream("ticket-{$venta->correlativo}.pdf");
     }
-
-    // Detalles AGRUPADOS por producto (evita líneas duplicadas por lote)
-    $detalles = DB::table('detalle_ventas')
-                    ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
-                    ->where('detalle_ventas.venta_id', $id)
-                    ->select(
-                        'productos.nombre as producto',
-                        DB::raw('SUM(detalle_ventas.cantidad) as cantidad'),
-                        DB::raw('ROUND(MAX(detalle_ventas.precio_unitario), 2) as precio_unitario'),
-                        DB::raw('ROUND(SUM(detalle_ventas.subtotal), 2) as subtotal')
-                    )
-                    ->groupBy('productos.id', 'productos.nombre')
-                    ->get();
-
-    // Información del crédito (si existe) – ahora incluye el DUI
-    $credito = DB::table('creditos')
-                    ->join('clientes_creditos', 'creditos.cliente_credito_id', '=', 'clientes_creditos.id')
-                    ->where('creditos.venta_id', $id)
-                    ->select(
-                        'clientes_creditos.nombre as cliente',
-                        'clientes_creditos.dui',
-                        'creditos.monto_adeudado'
-                    )
-                    ->first();
-
-    // Generar PDF
-    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tickets.venta', compact('config', 'venta', 'detalles', 'credito'));
-
-    // Configurar tamaño del papel (80mm de ancho, alto automático)
-    $pdf->setPaper([0, 0, 226.77, 400], 'portrait'); // 80mm ≈ 226.77px
-
-    return $pdf->stream("ticket-{$venta->correlativo}.pdf");
-}
 }
