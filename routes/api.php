@@ -56,6 +56,7 @@ Route::middleware(['auth:api'])->group(function(){
     Route::middleware(['role:ADMIN|VENDEDOR'])->group(function(){
         // Ventas y tickets
         Route::apiResource('ventas', VentaController::class);
+        Route::patch('ventas/{id}/metodo-pago', [VentaController::class, 'updateMetodoPago']);
         Route::get('/ventas/{id}/ticket', [VentaController::class, 'ticket'])->name('ventas.ticket');
 
         // Métodos de pago y clientes
@@ -133,6 +134,7 @@ Route::middleware(['auth:api'])->group(function(){
         Route::get('/reportes/cierre-diario', [ReporteController::class, 'cierreDiario']);
         Route::get('/reportes/cambio-producto', [ReporteController::class, 'cambioProducto']);
         Route::get('reportes/devoluciones-ventas', [ReporteController::class, 'devolucionesVentas']);
-         Route::post('cambios-productos/procesar-vencidos', [CambioProductoController::class, 'procesarVencidos']);
+        Route::post('cambios-productos/procesar-vencidos', [CambioProductoController::class, 'procesarVencidos']);
+        Route::get('reportes/productos-por-vencer', [ReporteController::class, 'productosPorVencer']);
     });
 });

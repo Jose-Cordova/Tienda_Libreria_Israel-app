@@ -3,6 +3,39 @@
 <head>
     <meta charset="utf-8">
     @include('reportes.css.Pdf')
+
+    {{-- ✅ Estilos específicos para el Reporte de Inventario --}}
+    <style>
+        .header-table {
+            padding-bottom: 14px;
+            margin-bottom: 26px;
+        }
+        .empresa {
+            font-size: 20px;
+        }
+        .reporte-titulo {
+            font-size: 17px;
+            letter-spacing: 1.2px;
+        }
+        .reporte-periodo {
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        .seccion-titulo {
+            font-size: 13px;
+            padding: 8px 12px;
+            margin-top: 24px;
+            letter-spacing: 1px;
+        }
+        th {
+            font-size: 11px;
+            padding: 7px 9px;
+        }
+        td {
+            font-size: 11px;
+            padding: 7px 9px;
+        }
+    </style>
 </head>
 <body>
     <!-- ENCABEZADO -->
@@ -37,16 +70,14 @@
         <table>
             <thead>
                 <tr>
-                    <th>N°</th>
+                    <th class="text-center">N°</th>
                     <th>Producto</th>
                     <th>Sección</th>
                     <th>Marca</th>
                     <th>Categoría</th>
                     <th class="text-center">Stock</th>
                     <th class="text-center">Stock Mín.</th>
-                    <th class="text-right">P. Detalle</th>
-                    <th class="text-right">P. Mayor</th>
-                    <th>Perec.</th>
+                    <th class="text-center">Perec.</th>
                     <th>Estado</th>
                 </tr>
             </thead>
@@ -62,8 +93,6 @@
                         <strong>{{ $p->stock }}</strong>
                     </td>
                     <td class="text-center">{{ $p->stock_minimo }}</td>
-                    <td class="text-right">${{ number_format($p->precio_detalle, 2) }}</td>
-                    <td class="text-right">${{ number_format($p->precio_mayor, 2) }}</td>
                     <td class="text-center">{{ $p->perecedero === 'PERECEDERO' ? 'Sí' : 'No' }}</td>
                     <td>
                         <span class="{{ $p->estado === 'ACTIVO' ? 'positivo' : 'negativo' }}">

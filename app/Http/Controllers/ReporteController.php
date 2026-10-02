@@ -221,7 +221,7 @@ class ReporteController extends Controller
         $cantidadVentas = $ventas->count();
         $totalFinanciero = $totalVentas - $totalDevoluciones;
         $mostrarTotalFinanciero = ! $request->filled('estado') || $request->estado === 'PAGADA';
-        $mostrarTotalVentas = !in_array($request->estado, ['CREDITO', 'ANULADA', 'DEVOLUCION']);
+        $mostrarTotalVentas = ! in_array($request->estado, ['CREDITO', 'ANULADA', 'DEVOLUCION']);
         $sinFiltros = ! $request->filled('tipo_cliente')
         && ! $request->filled('metodo_pago_id')
         && ! $request->filled('estado');
@@ -346,7 +346,7 @@ class ReporteController extends Controller
             $filtrosActivos['Cliente'] = $cliente ? $cliente->nombre : $request->cliente_credito_id;
         }
         if ($request->filled('estado')) {
-        $filtrosActivos['Estado'] = $request->estado;
+            $filtrosActivos['Estado'] = $request->estado;
         }
 
         $config = Configuracion::first();
@@ -372,7 +372,7 @@ class ReporteController extends Controller
             $creditosQuery->where('clientes_creditos.id', $request->cliente_credito_id);
         }
         if ($request->filled('estado')) {
-        $creditosQuery->where('creditos.estado', $request->estado);
+            $creditosQuery->where('creditos.estado', $request->estado);
         }
 
         $creditos = $creditosQuery->get();
@@ -544,8 +544,6 @@ class ReporteController extends Controller
                 'categorias.nombre as categoria',
                 'productos.stock',
                 'productos.stock_minimo',
-                'productos.precio_detalle',
-                'productos.precio_mayor',
                 'productos.perecedero',
                 'productos.estado'
             )
@@ -903,5 +901,95 @@ class ReporteController extends Controller
         $this->agregarPiePagina($pdf);
 
         return $pdf->stream("reporte-devoluciones-ventas-{$inicio}-{$fin}.pdf");
+    }
+
+
+
+//////////////////////////////////////////
+// REPORTE DE PRODUCTOS PRÓXIMOS A VENCER//
+//////////////////////////////////////////
+
+public function productosPorVencer(Request $request)
+{
+    $config = Configuracion::first();
+
+    $hoy = now()->toDateString();
+    $limite = now()->addDays(15)->toDateString();
+
+    $lotes = DB::table('lotes')
+        ->join('productos', 'lotes.producto_id', '=', 'productos.id')
+        ->join('marcas', 'productos.marca_id', '=', 'marcas.id')
+        ->join('categorias', 'productos.categoria_id', '=', 'categorias.id')
+        ->where('productos.perecedero', 'PERECEDERO')
+        ->where('lotes.estado', 'ACTIVO')
+        ->where('lotes.cantidad_actual', '>', 0)
+        ->whereBetween('lotes.fecha_vencimiento', [$hoy, $limite])
+        ->select(
+            'productos.id as producto_id',
+            'productos.nombre as producto',
+            'productos.seccion',
+            'productos.stock',
+            'marcas.nombre as marca',
+            'categorias.nombre as categoria',
+            'lotes.codigo_lote',
+            'lotes.fecha_vencimiento',
+            'lotes.cantidad_actual'
+        )
+        ->orderBy('productos.nombre')
+        ->orderBy('lotes.fecha_vencimiento')
+        ->get();
+
+    // Unificar lotes duplicados (mismo producto + mismo código + misma fecha)
+    $lotesUnificados = $lotes->groupBy(function ($item) {
+        return $item->producto_id . '|' . $item->codigo_lote . '|' . $item->fecha_vencimiento;
+    })->map(function ($grupo) {
+        $primero = $grupo->first();
+        $primero->cantidad_actual = $grupo->sum('cantidad_actual');
+        $primero->dias_restantes = now()->startOfDay()->diffInDays(
+            \Carbon\Carbon::parse($primero->fecha_vencimiento)->startOfDay(),
+            false
+        );
+        return $primero;
+    })->values();
+
+    // Agrupar por producto (sin referenciar la variable externa)
+    $productosAgrupados = $lotesUnificados->groupBy('producto_id')->map(function ($grupoLotes) {
+        $primerLote = $grupoLotes->first();
+
+        return [
+            'producto'       => $primerLote->producto,
+            'seccion'        => $primerLote->seccion,
+            'marca'          => $primerLote->marca,
+            'categoria'      => $primerLote->categoria,
+            'stock'          => $primerLote->stock,
+            'lotes'          => $grupoLotes->sortBy('fecha_vencimiento')->values(),
+            'total_lotes'    => $grupoLotes->count(),
+            'total_unidades' => $grupoLotes->sum('cantidad_actual'),
+        ];
+    })->values();
+
+    // Totales Globales
+    $totalProductos = $productosAgrupados->count();
+    $totalLotes     = $productosAgrupados->sum('total_lotes');
+    $totalUnidades  = $productosAgrupados->sum('total_unidades');
+
+    // Generar PDF
+    $pdf = Pdf::loadView('reportes.ProductosPorVencer', compact(
+        'config',
+        'productosAgrupados',
+        'totalProductos',
+        'totalLotes',
+        'totalUnidades'
+    ));
+
+    $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+    $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+    $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
+    $pdf->setPaper('A4', 'portrait');
+    $pdf->render();
+
+    $this->agregarPiePagina($pdf);
+
+    return $pdf->stream('reporte-productos-por-vencer.pdf');
     }
 }
