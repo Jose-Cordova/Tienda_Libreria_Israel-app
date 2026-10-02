@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
+use App\Rules\CorreoValido;
 
 class AuthController extends Controller
 {
@@ -60,7 +61,7 @@ class AuthController extends Controller
       //Validamos datos a través de Request
       $validator = Validator::make($request->all(),[
           'name' => 'required|string|max:191',
-          'email' => 'required|string|email|max:191|unique:users',
+          'email' => ['required', 'string', new CorreoValido, 'max:191', 'unique:users'],
           'password' => 'required|string|min:8'
       ]);
       if($validator->fails()){

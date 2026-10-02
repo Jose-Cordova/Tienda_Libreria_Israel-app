@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Rules\CorreoValido;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
@@ -31,7 +32,7 @@ class UserRequest extends FormRequest
             'name' => 'required|string|max:255',
             'email' => [
                 'required',
-                'email',
+                new CorreoValido,
                 'max:255',
                 Rule::unique('users')->ignore($id)
             ],
