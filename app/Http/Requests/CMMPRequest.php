@@ -31,13 +31,15 @@ class CMMPRequest extends FormRequest
         $id = $this->route('categoria') ?? $this->route('marca');
         //Obtenemos la URL actual y verificamos si contiene la ruta deseada
         $tabla = str_contains($this->path(), 'categorias') ? 'categorias' : 'marcas';
-            return [
-                'nombre' => [
-                    'required',
-                    'string',
-                    'min:2',
-                    'max:50',
-                    Rule::unique($tabla, 'nombre')->ignore($id)
+        $tipo = str_contains($this->path(), 'categorias') ? 'categoría' : 'marca';
+        return [
+            'nombre' => [
+                'required',
+                'string',
+                'min:2',
+                'max:50',
+                'regex:/^[\pL\s]+$/u',
+                Rule::unique($tabla, 'nombre')->ignore($id)
             ],
             'seccion' => [
                 'required',
@@ -52,6 +54,7 @@ class CMMPRequest extends FormRequest
         return [
             'nombre.required' => 'El nombre es obligatorio.',
             'nombre.min' => 'El nombre debe tener al menos 2 caracteres.',
+            'nombre.regex' => "El nombre de la {$tipo} solo debe contener letras.",
             'nombre.unique' => "Ya existe una {$tipo} con este nombre.",
             'seccion.required' => 'La sección es obligatoria.',
             'seccion.in' => 'La sección debe de ser TIENDA, LIBRERIA o MEDICAMENTO.'

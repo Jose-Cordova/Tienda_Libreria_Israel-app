@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Configuracion;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Rules\CorreoValido;
 
 
 
@@ -28,7 +29,7 @@ class ConfiguracionController extends Controller
         $data = $request->validate([
             'nombre_tienda' => 'required|string|max:100',
             'telefono'      => 'required|string|max:20|min:9',
-            'email'         => 'required|email|max:100',
+            'email'         => ['required', new CorreoValido, 'max:100'],
         ], [
             'nombre_tienda.required' => 'El nombre de la tienda es obligatorio.',
             'nombre_tienda.max'      => 'El nombre no debe exceder los 100 caracteres.',

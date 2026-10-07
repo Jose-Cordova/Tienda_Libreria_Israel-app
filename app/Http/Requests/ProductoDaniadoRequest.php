@@ -38,7 +38,7 @@ class ProductoDaniadoRequest extends FormRequest
         return [
             'producto_id' => 'required|exists:productos,id',
             'cantidad'    => 'required|integer|min:1',
-            'descripcion' => 'required|string|max:255',
+            'descripcion' => 'required|string|min:3|max:255',
             'origen'      => 'required|in:DIRECTO,VENCIMIENTO',
             'lote_id'     => 'nullable|exists:lotes,id',
         ];
@@ -58,7 +58,8 @@ class ProductoDaniadoRequest extends FormRequest
             'producto_id.exists'    => 'El producto seleccionado no existe.',
             'cantidad.required'     => 'La cantidad es obligatoria.',
             'cantidad.min'          => 'La cantidad debe ser al menos 1.',
-            'descripcion.required'  => 'La descripción del daño es obligatoria.',
+            'descripcion.required'  => 'El motivo del daño es obligatorio.',
+            'descripcion.min'       => 'El motivo debe tener al menos 3 caracteres.',
             'origen.required'       => 'El origen del registro es obligatorio.',
             'origen.in'             => 'El origen seleccionado no es válido.',
             'lote_id.exists'        => 'El lote seleccionado no existe.',

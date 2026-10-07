@@ -381,8 +381,76 @@ class CambioProductoController extends Controller
             }
 
             $nuevaCantidad = (int) $request->cantidad;
-            $costoUnitario = $registro->costo_unitario ?: 0.00;
+            $cantidadActual = (int) $registro->cantidad;
+            $diferencia = $nuevaCantidad - $cantidadActual;
 
+            if ($diferencia === 0) {
+                return response()->json([
+                    'message'         => 'La cantidad no presenta cambios.',
+                    'cambio_producto' => $registro->load(['producto.marca', 'productoReemplazo.marca', 'lote'])
+                ], 200);
+            }
+
+            $producto = $registro->producto;
+
+            if ($diferencia > 0) {
+                // Se requiere descontar más stock
+                if ($producto->perecedero === 'PERECEDERO') {
+                    if ($registro->lote_id) {
+                        $lote = $registro->lote;
+                        if (!$lote) {
+                            return response()->json([
+                                'message' => 'El lote asociado no existe.'
+                            ], 400);
+                        }
+
+                        // Si la cantidad en lote es menor a la diferencia requerida, ajustamos el lote y el producto automáticamente
+                        if ($lote->cantidad_actual < $diferencia) {
+                            $faltanteLote = $diferencia - $lote->cantidad_actual;
+                            // Aumentamos cantidad_inicial y stock del producto para mantener el historial contable registrado
+                            $lote->cantidad_inicial += $faltanteLote;
+                            $producto->increment('stock', $faltanteLote);
+                            $lote->cantidad_actual += $faltanteLote;
+                        }
+
+                        $lote->cantidad_actual -= $diferencia;
+                        if ($lote->cantidad_actual <= 0) {
+                            $lote->estado = 'INACTIVO';
+                            $lote->motivo_inactivo = 'AGOTADO';
+                        }
+                        $lote->save();
+                    }
+                } else {
+                    // Producto normal no perecedero
+                    if ($producto->stock < $diferencia) {
+                        $faltanteStock = $diferencia - $producto->stock;
+                        $producto->increment('stock', $faltanteStock);
+                    }
+                }
+
+                $producto->decrement('stock', $diferencia);
+            } else {
+                // Se reduce la cantidad ($diferencia es negativa), devolver stock
+                $cantidadADevolver = abs($diferencia);
+
+                if ($producto->perecedero === 'PERECEDERO') {
+                    if ($registro->lote_id) {
+                        $lote = $registro->lote;
+                        if ($lote) {
+                            $lote->cantidad_actual += $cantidadADevolver;
+                            if ($lote->estado === 'INACTIVO') {
+                                $lote->estado = 'ACTIVO';
+                                $lote->motivo_inactivo = null;
+                            }
+                            $lote->save();
+                        }
+                    }
+                }
+
+                $producto->increment('stock', $cantidadADevolver);
+            }
+
+            $costoUnitario = $registro->costo_unitario ?: 0.00;
             $registro->cantidad = $nuevaCantidad;
             $registro->total_perdida = $costoUnitario * $nuevaCantidad;
             $registro->save();

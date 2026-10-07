@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Validation\Rule;
+use App\Rules\CorreoValido;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
@@ -33,7 +34,7 @@ class ProveedorRequest extends FormRequest
         return [
             'nombre' => 'required|string|min:2|max:50',
             'telefono' => ['required', 'string', 'min:8', 'max:20', Rule::unique('proveedores', 'telefono')->ignore($id)],
-            'email' => ['required', 'email', 'max:100', Rule::unique('proveedores', 'email')->ignore($id)],
+            'email' => ['required', new CorreoValido, 'max:100', Rule::unique('proveedores', 'email')->ignore($id)],
             'direccion' => 'nullable|string|min:5|max:250'
         ];
     }
@@ -49,7 +50,11 @@ class ProveedorRequest extends FormRequest
             'email.required'     => 'El correo es obligatorio.',
             'email.email'        => 'El correo no tiene un formato válido.',
             'email.unique'       => 'Ya existe un proveedor con este correo.',
-            'direccion.min'      => 'La dirección debe tener al menos 5 caracteres.'
+            'direccion.min'      => 'La dirección debe tener al menos 5 caracteres.',
+            'direccion.max'      => 'La dirección no puede superar los 250 caracteres.',
+            'nombre.max'         => 'El nombre no puede superar los 50 caracteres.',
+            'telefono.max'       => 'El teléfono no puede superar los 20 caracteres.',
+            'email.max'          => 'El correo no puede superar los 100 caracteres.'
         ];
     }
     //Si la validacion falla se ejecuta esta funcion
