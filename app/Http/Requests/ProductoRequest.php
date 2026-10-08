@@ -21,38 +21,38 @@ class ProductoRequest extends FormRequest
         $isUpdate = $id !== null;
 
         $rules = [
-            'nombre'           => 'required|string|min:3|max:100|unique:productos,nombre'.($id ? ','.$id : ''),
-            'precio_detalle'   => 'required|numeric|min:0.01',
+            'nombre'           => 'required|string|min:3|max:100|regex:/^[\pL\pN\s\-\.\,\#]+$/u|unique:productos,nombre'.($id ? ','.$id : ''),
+            'precio_detalle'   => 'required|numeric|min:0.01|max:999999.99',
             'precio_mayor'     => [
-                'required', 'numeric', 'min:0.01',
+                'required', 'numeric', 'min:0.01', 'max:999999.99',
                 function ($attribute, $value, $fail) {
                     if ($this->precio_detalle && (float)$value >= (float)$this->precio_detalle) {
                         $fail('El precio mayorista debe ser menor al precio detalle.');
                     }
                 }
             ],
-            'stock_minimo'     => 'required|integer|min:1',
+            'stock_minimo'     => 'required|integer|min:1|max:999999',
             'perecedero'       => $isUpdate ? 'sometimes|in:NORMAL,PERECEDERO' : 'required|in:NORMAL,PERECEDERO',
             'marca_id'         => ['required', 'exists:marcas,id'],
             'categoria_id'     => ['required', 'exists:categorias,id'],
             'seccion'          => $isUpdate ? 'sometimes|in:TIENDA,LIBRERIA,MEDICAMENTO' : 'required|in:TIENDA,LIBRERIA,MEDICAMENTO',
-            'nuevo_stock'      => 'nullable|integer|min:0',
-            'motivo_ajuste'    => 'required_with:nuevo_stock|nullable|string|min:3|max:255',
+            'nuevo_stock'      => 'nullable|integer|min:0|max:999999999',
+            'motivo_ajuste'    => 'required_with:nuevo_stock|nullable|string|min:3|max:255|regex:/^[\pL\pN\s\-\.\,\(\)\:\#\!\¡\?\¿\/]+$/u',
             'lote_id'          => 'nullable|exists:lotes,id',
             // Nuevo lote opcional en edición
             'nuevo_lote'                    => 'nullable|array',
             'nuevo_lote.codigo_lote'        => 'required_with:nuevo_lote|nullable|string|max:50|unique:lotes,codigo_lote',
             'nuevo_lote.fecha_vencimiento'  => 'required_with:nuevo_lote|nullable|date|after:today',
-            'nuevo_lote.cantidad'           => 'required_with:nuevo_lote|nullable|integer|min:1',
+            'nuevo_lote.cantidad'           => 'required_with:nuevo_lote|nullable|integer|min:1|max:999999999',
         ];
 
         // Solo para creación (store)
         if (!$isUpdate) {
-            $rules['cantidad_inicial']           = 'required_if:perecedero,NORMAL|nullable|integer|min:1';
+            $rules['cantidad_inicial']           = 'required_if:perecedero,NORMAL|nullable|integer|min:1|max:999999999';
             $rules['lotes']                      = 'required_if:perecedero,PERECEDERO|nullable|array|min:1';
             $rules['lotes.*.codigo_lote']        = 'required|string|max:50|distinct|unique:lotes,codigo_lote';
             $rules['lotes.*.fecha_vencimiento']  = 'required|date|after:today';
-            $rules['lotes.*.cantidad']           = 'required|integer|min:1';
+            $rules['lotes.*.cantidad']           = 'required|integer|min:1|max:999999999';
         }
 
         // Validación de pertenencia de categoría y marca a la sección
