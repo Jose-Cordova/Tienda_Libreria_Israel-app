@@ -245,48 +245,60 @@ class ReporteController extends Controller
     }
 
     public function compras(Request $request)
-    {
-        $request->validate([
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
-            'proveedor_id' => 'nullable|integer|exists:proveedores,id',
-        ]);
+{
+    $request->validate([
+        'fecha_inicio' => 'required|date',
+        'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+        'proveedor_id' => 'nullable|integer|exists:proveedores,id',
+    ]);
 
-        $inicio = $request->fecha_inicio;
-        $fin = $request->fecha_fin;
+    $inicio = $request->fecha_inicio;
+    $fin = $request->fecha_fin;
 
-        // Filtros activos
-        $filtrosActivos = [];
-        if ($request->filled('proveedor_id')) {
-            $proveedor = DB::table('proveedores')->find($request->proveedor_id);
-            $filtrosActivos['Proveedor'] = $proveedor ? $proveedor->nombre : $request->proveedor_id;
-        }
+    // Filtros activos
+    $filtrosActivos = [];
+    if ($request->filled('proveedor_id')) {
+        $proveedor = DB::table('proveedores')->find($request->proveedor_id);
+        $filtrosActivos['Proveedor'] = $proveedor ? $proveedor->nombre : $request->proveedor_id;
+    }
 
-        $config = Configuracion::first();
+    $config = Configuracion::first();
 
-        // --- 1. Compras con sus detalles ---
-        $comprasQuery = DB::table('compras')
-            ->join('proveedores', 'compras.proveedor_id', '=', 'proveedores.id')
-            ->whereBetween('compras.fecha_registro', [$inicio, $fin])
-            ->select(
-                'compras.id', 'compras.numero_factura', 'compras.fecha_registro as fecha',
-                'compras.total', 'proveedores.nombre as proveedor'
-            );
+    // --- 1. Compras con sus detalles (solo REGISTRADAS) ---
+    $comprasQuery = DB::table('compras')
+        ->join('proveedores', 'compras.proveedor_id', '=', 'proveedores.id')
+        ->whereBetween('compras.fecha_registro', [$inicio, $fin])
+        ->where('compras.estado', 'REGISTRADA')
+        ->select(
+            'compras.id',
+            'compras.numero_factura',
+            'compras.fecha_registro as fecha',
+            'compras.total',
+            'proveedores.nombre as proveedor'
+        );
 
-        if ($request->filled('proveedor_id')) {
-            $comprasQuery->where('compras.proveedor_id', $request->proveedor_id);
-        }
+    if ($request->filled('proveedor_id')) {
+        $comprasQuery->where('compras.proveedor_id', $request->proveedor_id);
+    }
 
-        $compras = $comprasQuery->orderBy('compras.fecha_registro')->get();
+    $compras = $comprasQuery->orderBy('compras.fecha_registro')->get();
 
-        // Detalles agrupados por compra
-        $compraIds = $compras->pluck('id');
+    // Detalles agrupados por compra
+    $compraIds = $compras->pluck('id');
+    $detallesCompras = collect();
+
+    if ($compraIds->isNotEmpty()) {
         $detallesCompras = DB::table('detalle_compras')
             ->join('productos', 'detalle_compras.producto_id', '=', 'productos.id')
-            ->leftJoin('lotes', function ($join) {
-                $join->on('lotes.compra_id', '=', 'detalle_compras.compra_id')
-                    ->on('lotes.producto_id', '=', 'detalle_compras.producto_id');
-            })
+            ->leftJoin(
+                DB::raw('(SELECT DISTINCT ON (compra_id, producto_id) compra_id, producto_id, codigo_lote
+                          FROM lotes
+                          ORDER BY compra_id, producto_id, id ASC) as lt'),
+                function ($join) {
+                    $join->on('lt.compra_id', '=', 'detalle_compras.compra_id')
+                        ->on('lt.producto_id', '=', 'detalle_compras.producto_id');
+                }
+            )
             ->whereIn('detalle_compras.compra_id', $compraIds)
             ->select(
                 'detalle_compras.compra_id',
@@ -294,39 +306,39 @@ class ReporteController extends Controller
                 'detalle_compras.cantidad',
                 'detalle_compras.precio_unitario',
                 'detalle_compras.subtotal',
-                'lotes.codigo_lote'
+                'lt.codigo_lote'
             )
             ->orderBy('detalle_compras.id')
             ->get()
             ->groupBy('compra_id');
-
-        // Mapear compras con detalles y numerar
-        $compras = $compras->map(function ($item, $index) use ($detallesCompras) {
-            $item->nro = $index + 1;
-            $item->detalles = $detallesCompras->get($item->id, collect());
-
-            return $item;
-        });
-
-        // --- 2. Totales ---
-        $totalCompras = $compras->sum('total');
-
-        // --- 3. Generar PDF ---
-        $pdf = Pdf::loadView('reportes.Compras', compact(
-            'config', 'inicio', 'fin',
-            'compras', 'totalCompras', 'filtrosActivos'
-        ));
-
-        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
-        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
-        $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
-        $pdf->setPaper('A4', 'portrait');
-        $pdf->render();
-
-        $this->agregarPiePagina($pdf);
-
-        return $pdf->stream("reporte-compras-{$inicio}-{$fin}.pdf");
     }
+
+    // Mapear compras con detalles y numerar
+    $compras = $compras->map(function ($item, $index) use ($detallesCompras) {
+        $item->nro = $index + 1;
+        $item->detalles = $detallesCompras->get($item->id, collect());
+        return $item;
+    });
+
+    // --- 2. Totales ---
+    $totalCompras = $compras->sum('total');
+
+    // --- 3. Generar PDF ---
+    $pdf = Pdf::loadView('reportes.Compras', compact(
+        'config', 'inicio', 'fin',
+        'compras', 'totalCompras', 'filtrosActivos'
+    ));
+
+    $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+    $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+    $pdf->getDomPDF()->set_option('isFontSubsettingEnabled', true);
+    $pdf->setPaper('A4', 'portrait');
+    $pdf->render();
+
+    $this->agregarPiePagina($pdf);
+
+    return $pdf->stream("reporte-compras-{$inicio}-{$fin}.pdf");
+}
 
     public function creditos(Request $request)
     {

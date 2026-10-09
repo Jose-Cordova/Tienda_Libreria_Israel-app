@@ -19,9 +19,6 @@ use Illuminate\Validation\ValidationException;
 
 class VentaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         try {
@@ -29,6 +26,7 @@ class VentaController extends Controller
                 'per_page' => 'nullable|integer|min:1|max:100',
             ]);
 
+            // --- 1. Consulta base para el LISTADO (sin filtro de mes por defecto) ---
             $query = Venta::with([
                 'user',
                 'metodoPago',
@@ -64,23 +62,61 @@ class VentaController extends Controller
                 $query->whereDate('fecha', '<=', $request->fecha_fin);
             }
 
-            // Calcular totales globales (ahora incluye DEVOLUCION)
-            $totalesQuery = clone $query;
+            // --- 2. Consulta para TOTALES (con mes actual por defecto) ---
+            $totalesQuery = Venta::query();
+
+            // Aplicar los mismos filtros que el listado
+            if ($request->estado) {
+                $totalesQuery->where('estado', $request->estado);
+            }
+            if ($request->user_id) {
+                $totalesQuery->where('user_id', $request->user_id);
+            }
+            if ($request->tipoCliente) {
+                $totalesQuery->where('tipo_cliente', $request->tipoCliente);
+            }
+            if ($request->estado_producto) {
+                $totalesQuery->whereHas('detalleVentas.producto', function ($q) use ($request) {
+                    $q->where('estado', $request->estado_producto);
+                });
+            }
+            if ($request->metodo_pago_id) {
+                $totalesQuery->where('metodo_pago_id', $request->metodo_pago_id);
+            }
+            if ($request->filled('correlativo')) {
+                $totalesQuery->where('correlativo', $request->correlativo);
+            }
+
+            // ✅ Si NO vienen NINGUNA fecha, limitar al mes actual
+            // Si viene al menos una fecha, respetar el filtro del usuario
+            if ($request->fecha_inicio || $request->fecha_fin) {
+                if ($request->fecha_inicio) {
+                    $totalesQuery->whereDate('fecha', '>=', $request->fecha_inicio);
+                }
+                if ($request->fecha_fin) {
+                    $totalesQuery->whereDate('fecha', '<=', $request->fecha_fin);
+                }
+            } else {
+                $totalesQuery->whereBetween('fecha', [
+                    now()->startOfMonth()->toDateString(),
+                    now()->endOfMonth()->toDateString(),
+                ]);
+            }
+
             $totales = $totalesQuery->selectRaw("
-            COUNT(*) as total_ventas,
             COUNT(CASE WHEN estado = 'PAGADA' THEN 1 END) as cantidad_pagadas,
             COALESCE(SUM(CASE WHEN estado = 'PAGADA' THEN total END), 0) as total_pagadas,
             COUNT(CASE WHEN estado = 'CREDITO' THEN 1 END) as cantidad_credito,
             COALESCE(SUM(CASE WHEN estado = 'CREDITO' THEN total END), 0) as total_credito,
-            COUNT(CASE WHEN estado = 'ANULADA' THEN 1 END) as cantidad_anuladas,
-            COALESCE(SUM(CASE WHEN estado = 'ANULADA' THEN total END), 0) as total_anuladas,
             COUNT(CASE WHEN estado = 'DEVOLUCION' THEN 1 END) as cantidad_devueltas,
             COALESCE(SUM(CASE WHEN estado = 'DEVOLUCION' THEN total END), 0) as total_devueltas
         ")->first();
 
+            // --- 3. Listado paginado ---
             $perPage = $request->get('per_page', 15);
             $ventas = $query->orderBy('fecha', 'desc')->paginate($perPage);
 
+            // --- 4. Respuesta ---
             $response = $ventas->toArray();
             $response['totales'] = [
                 'pagadas' => [
@@ -90,10 +126,6 @@ class VentaController extends Controller
                 'credito' => [
                     'cantidad' => (int) $totales->cantidad_credito,
                     'total' => (float) $totales->total_credito,
-                ],
-                'anuladas' => [
-                    'cantidad' => (int) $totales->cantidad_anuladas,
-                    'total' => (float) $totales->total_anuladas,
                 ],
                 'devueltas' => [
                     'cantidad' => (int) $totales->cantidad_devueltas,
