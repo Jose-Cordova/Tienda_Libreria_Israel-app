@@ -324,7 +324,7 @@ class ReporteController extends Controller
     $totalCompras = $compras->sum('total');
 
     // --- 3. Generar PDF ---
-    $pdf = Pdf::loadView('reportes.Compras', compact(
+    $pdf = Pdf::loadView('reportes.compras', compact(
         'config', 'inicio', 'fin',
         'compras', 'totalCompras', 'filtrosActivos'
     ));
