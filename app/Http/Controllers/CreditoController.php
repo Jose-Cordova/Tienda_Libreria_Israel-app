@@ -247,7 +247,7 @@ class CreditoController extends Controller
 
             $credito = Credito::findOrFail($abono->credito_id);
 
-            // Revertir el saldo del crédito
+            // revertir el saldo del crédito
             $credito->saldo -= $abono->monto;
 
             // Si el crédito estaba PAGADO y ahora el saldo es menor, volver a PENDIENTE
