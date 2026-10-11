@@ -27,18 +27,18 @@ class CMMPRequest extends FormRequest
     //Definimos las reglas de validacion que se deben cumplir
     public function rules(): array
     {
-        //Obtenemos el id y extraemos la peticion
         $id = $this->route('categoria') ?? $this->route('marca');
-        //Obtenemos la URL actual y verificamos si contiene la ruta deseada
-        $tabla = str_contains($this->path(), 'categorias') ? 'categorias' : 'marcas';
-        $tipo = str_contains($this->path(), 'categorias') ? 'categoría' : 'marca';
+        $isCategoria = str_contains($this->path(), 'categorias');
+        $tabla = $isCategoria ? 'categorias' : 'marcas';
+        $regex = $isCategoria ? '/^[\pL\s]+$/u' : '/^[\pL\pN\s\-]+$/u';
+
         return [
             'nombre' => [
                 'required',
                 'string',
                 'min:2',
                 'max:50',
-                'regex:/^[\pL\s]+$/u',
+                "regex:{$regex}",
                 Rule::unique($tabla, 'nombre')->ignore($id)
             ],
             'seccion' => [
@@ -47,14 +47,20 @@ class CMMPRequest extends FormRequest
             ]
         ];
     }
-    //Definimos los mensajes para cada cosa que falle
+
     public function messages()
     {
-        $tipo = str_contains($this->path(), 'categorias') ? 'categoría' : 'marca';
+        $isCategoria = str_contains($this->path(), 'categorias');
+        $tipo = $isCategoria ? 'categoría' : 'marca';
+        $regexMsg = $isCategoria
+            ? "El nombre de la categoría solo debe contener letras."
+            : "El nombre de la marca contiene caracteres no permitidos.";
+
         return [
             'nombre.required' => 'El nombre es obligatorio.',
             'nombre.min' => 'El nombre debe tener al menos 2 caracteres.',
-            'nombre.regex' => "El nombre de la {$tipo} solo debe contener letras.",
+            'nombre.max' => 'El nombre no debe superar los 50 caracteres.',
+            'nombre.regex' => $regexMsg,
             'nombre.unique' => "Ya existe una {$tipo} con este nombre.",
             'seccion.required' => 'La sección es obligatoria.',
             'seccion.in' => 'La sección debe de ser TIENDA, LIBRERIA o MEDICAMENTO.'

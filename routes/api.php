@@ -101,6 +101,7 @@ Route::middleware(['auth:api'])->group(function(){
         // Proveedores y compras
         Route::apiResource('proveedores', ProveedorController::class);
         Route::get('compras/verificar-factura', [CompraController::class, 'verificarFactura']);
+        Route::post('compras/validar', [CompraController::class, 'validar']);
         Route::apiResource('compras', CompraController::class);
         Route::post('compras/{id}/anular', [CompraController::class, 'anular']);
         Route::apiResource('cronograma-proveedores', CronogramaProveedorController::class);

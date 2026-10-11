@@ -38,7 +38,7 @@ class ProductoDaniadoRequest extends FormRequest
         return [
             'producto_id' => 'required|exists:productos,id',
             'cantidad'    => 'required|integer|min:1',
-            'descripcion' => 'required|string|min:3|max:255',
+            'descripcion' => 'required|string|min:3|max:255|regex:/^[\pL\pN\s\-\.\,\(\)\:\#\!\¡\?\¿\/]+$/u',
             'origen'      => 'required|in:DIRECTO,VENCIMIENTO',
             'lote_id'     => 'nullable|exists:lotes,id',
         ];

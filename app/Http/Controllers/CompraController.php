@@ -254,6 +254,12 @@ class CompraController extends Controller
        //
     }
 
+    //Valida la compra con las mismas reglas del registro, sin guardar (paso 2 del asistente)
+    public function validar(CompraRequest $request)
+    {
+        return response()->json(['valido' => true]);
+    }
+
     //Funcion para verificar si el Nº de Control o el Código de Generación ya estan registrados
     public function verificarFactura(Request $request)
     {

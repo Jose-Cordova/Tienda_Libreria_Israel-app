@@ -48,14 +48,14 @@ class CompraRequest extends FormRequest
             //Validacion para los detalles de compras
             'detalles' => 'required|array|min:1',
             'detalles.*.producto_id' => 'nullable|exists:productos,id',
-            'detalles.*.cantidad' => 'nullable|integer|min:1',
-            'detalles.*.factor_conversion' => 'nullable|integer|min:1',
-            'detalles.*.precio_unitario' => 'required|numeric|min:0.01',
-            'detalles.*.margen_detalle' => 'required|numeric|min:0.01',
-            'detalles.*.margen_mayor' => 'required|numeric|min:0.01',
+            'detalles.*.cantidad' => 'nullable|integer|min:1|max:99999',
+            'detalles.*.factor_conversion' => 'nullable|integer|min:1|max:1000',
+            'detalles.*.precio_unitario' => 'required|numeric|min:0.01|max:99999.99',
+            'detalles.*.margen_detalle' => 'required|numeric|min:0.01|max:100',
+            'detalles.*.margen_mayor' => 'required|numeric|min:0.01|max:100',
             //Validacion para producto nuevo
             'detalles.*.nombre' => 'nullable|string|max:100',
-            'detalles.*.stock_minimo' => 'nullable|integer|min:1',
+            'detalles.*.stock_minimo' => 'nullable|integer|min:1|max:999999',
             'detalles.*.perecedero' => 'nullable|in:NORMAL,PERECEDERO',
             'detalles.*.marca_id' => 'nullable|exists:marcas,id',
             'detalles.*.categoria_id' => 'nullable|exists:categorias,id',
@@ -64,7 +64,7 @@ class CompraRequest extends FormRequest
             'detalles.*.lotes' => 'nullable|array|min:1',
             'detalles.*.lotes.*.codigo_lote' => 'nullable|string|max:50',
             'detalles.*.lotes.*.fecha_vencimiento' => 'nullable|date|after:today',
-            'detalles.*.lotes.*.cantidad' => 'nullable|integer|min:1'
+            'detalles.*.lotes.*.cantidad' => 'nullable|integer|min:1|max:99999'
         ];
     }
     // Agregamos validaciones adicionales
@@ -317,16 +317,49 @@ class CompraRequest extends FormRequest
             'detalles.*.producto_id.exists' => 'El producto seleccionado no existe.',
             'detalles.*.precio_unitario.required'=> 'El precio unitario es obligatorio.',
             'detalles.*.precio_unitario.min' => 'El precio unitario debe ser mayor a 0.',
+            'detalles.*.precio_unitario.max' => 'El precio unitario no puede ser mayor a $99,999.99.',
             'detalles.*.margen_detalle.required' => 'El margen de venta al detalle es obligatorio.',
             'detalles.*.margen_detalle.min' => 'El margen al detalle debe ser mayor a 0.',
+            'detalles.*.margen_detalle.max' => 'El margen al detalle no puede ser mayor a 100%.',
             'detalles.*.margen_mayor.required' => 'El margen de venta al mayor es obligatorio.',
             'detalles.*.margen_mayor.min' => 'El margen al mayor debe ser mayor a 0.',
+            'detalles.*.margen_mayor.max' => 'El margen al mayor no puede ser mayor a 100%.',
+            'detalles.*.cantidad.max' => 'La cantidad no puede ser mayor a 99,999.',
             'detalles.*.perecedero.in' => 'El tipo de producto debe ser NORMAL o PERECEDERO.',
             'detalles.*.stock_minimo.min' => 'El stock mínimo debe ser al menos 1.',
+            'detalles.*.stock_minimo.max' => 'El stock mínimo no puede ser mayor a 999,999.',
             'detalles.*.lotes.*.fecha_vencimiento.after' => 'La fecha de vencimiento debe ser posterior a hoy.',
             'detalles.*.lotes.*.cantidad.min' => 'La cantidad del lote debe ser al menos 1.',
+            'detalles.*.lotes.*.cantidad.max' => 'La cantidad del lote no puede ser mayor a 99,999.',
             'detalles.*.factor_conversion.integer' => 'El factor de conversión debe ser un número entero.',
-            'detalles.*.factor_conversion.min' => 'El factor de conversión debe ser al menos 1.'
+            'detalles.*.factor_conversion.min' => 'El factor de conversión debe ser al menos 1.',
+            'detalles.*.factor_conversion.max' => 'El factor de conversión no puede ser mayor a 1,000.',
+            'detalles.*.nombre.max' => 'El nombre del producto no puede tener más de 100 caracteres.'
+        ];
+    }
+
+    //Nombres legibles para los mensajes automáticos (en lugar de "detalles.0.nombre")
+    public function attributes(): array
+    {
+        return [
+            'numero_factura' => 'N° de Control',
+            'codigo_factura' => 'Código de Generación',
+            'fecha_emision' => 'fecha de emisión',
+            'proveedor_id' => 'proveedor',
+            'detalles.*.nombre' => 'nombre del producto',
+            'detalles.*.precio_unitario' => 'costo unitario',
+            'detalles.*.cantidad' => 'cantidad',
+            'detalles.*.margen_detalle' => 'margen al detalle',
+            'detalles.*.margen_mayor' => 'margen al mayor',
+            'detalles.*.factor_conversion' => 'factor de conversión',
+            'detalles.*.stock_minimo' => 'stock mínimo',
+            'detalles.*.categoria_id' => 'categoría',
+            'detalles.*.marca_id' => 'marca',
+            'detalles.*.seccion' => 'sección',
+            'detalles.*.perecedero' => 'tipo de producto',
+            'detalles.*.lotes.*.codigo_lote' => 'código de lote',
+            'detalles.*.lotes.*.fecha_vencimiento' => 'fecha de vencimiento',
+            'detalles.*.lotes.*.cantidad' => 'cantidad del lote',
         ];
     }
 
