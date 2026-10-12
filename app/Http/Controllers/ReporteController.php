@@ -328,11 +328,11 @@ class ReporteController extends Controller
         // --- 2. Totales ---
         $totalCompras = $compras->sum('total');
 
-        // --- 3. Generar PDF ---
-        $pdf = Pdf::loadView('reportes.Compras', compact(
-            'config', 'inicio', 'fin',
-            'compras', 'totalCompras', 'filtrosActivos'
-        ));
+    // --- 3. Generar PDF ---
+    $pdf = Pdf::loadView('reportes.compras', compact(
+        'config', 'inicio', 'fin',
+        'compras', 'totalCompras', 'filtrosActivos'
+    ));
 
         $pdf->getDomPDF()->set_option('isPhpEnabled', true);
         $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
