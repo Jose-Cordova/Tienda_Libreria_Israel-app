@@ -41,8 +41,8 @@ class CompraRequest extends FormRequest
         return [
             //Validacion para factura
             //Maximo de caracteres del DTE: Nº de Control (31) y Código de Generación (36)
-            'numero_factura' => ['bail', 'required', 'string', 'max:31', 'unique:compras,numero_factura'],
-            'codigo_factura' => ['bail', 'required', 'string', 'max:36', 'unique:compras,codigo_factura'],
+            'numero_factura' => ['bail', 'required', 'string', 'max:31', 'min:31', 'unique:compras,numero_factura'],
+            'codigo_factura' => ['bail', 'required', 'string', 'max:36', 'min:36','unique:compras,codigo_factura'],
             'fecha_emision' => 'required|date',
             'proveedor_id' => 'required|exists:proveedores,id',
             //Validacion para los detalles de compras
@@ -304,9 +304,11 @@ class CompraRequest extends FormRequest
             'numero_factura.required' => 'El N° de Control es obligatorio.',
             'numero_factura.unique' => 'Ya existe una compra registrada con ese N° de Control en el sistema.',
             'numero_factura.max' => 'El N° de Control admite máximo 31 caracteres.',
+            'numero_factura.min' => 'El N° de Control admite minimo 31 caracteres.',
             'codigo_factura.required' => 'El Código de Generación es obligatorio.',
             'codigo_factura.unique' => 'Ya existe una compra registrada con ese Código de Generación en el sistema.',
             'codigo_factura.max' => 'El Código de Generación admite máximo 36 caracteres.',
+            'codigo_factura.min' => 'El Código de Generación admite minimo 36 caracteres.',
             'fecha_emision.required' => 'La fecha de emisión es obligatoria.',
             'fecha_emision.date' => 'La fecha de emisión no tiene un formato válido.',
             'proveedor_id.required' => 'Debe seleccionar un proveedor.',
