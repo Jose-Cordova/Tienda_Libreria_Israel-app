@@ -30,7 +30,7 @@ class CMMPRequest extends FormRequest
         $id = $this->route('categoria') ?? $this->route('marca');
         $isCategoria = str_contains($this->path(), 'categorias');
         $tabla = $isCategoria ? 'categorias' : 'marcas';
-        $regex = $isCategoria ? '/^[\pL\s]+$/u' : '/^[\pL\pN\s\-]+$/u';
+        $regex = $isCategoria ? '~^[\pL\pM\pN\s&/\-]+$~u' : '/^[\pL\pN\s\-]+$/u';
 
         return [
             'nombre' => [
@@ -53,7 +53,7 @@ class CMMPRequest extends FormRequest
         $isCategoria = str_contains($this->path(), 'categorias');
         $tipo = $isCategoria ? 'categoría' : 'marca';
         $regexMsg = $isCategoria
-            ? "El nombre de la categoría solo debe contener letras."
+            ? "Solo se permiten letras, números, espacios y los símbolos: & - /"
             : "El nombre de la marca contiene caracteres no permitidos.";
 
         return [
