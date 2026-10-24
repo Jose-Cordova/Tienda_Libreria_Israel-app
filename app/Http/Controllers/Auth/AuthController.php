@@ -95,17 +95,15 @@ class AuthController extends Controller
             if ($user) {
                 $user->load('roles');
 
-                // Solo si el usuario es ADMINISTRADOR, procesar los lotes vencidos
-                if ($user->hasRole('ADMIN')) {
-                    $hoy = now()->toDateString();
-                    $hayVencidos = \App\Models\Lote::where('estado', 'ACTIVO')
-                        ->where('cantidad_actual', '>', 0)
-                        ->where('fecha_vencimiento', '<=', $hoy)
-                        ->exists();
+                // Procesar los lotes vencidos sin importar el rol del usuario
+                $hoy = now()->toDateString();
+                $hayVencidos = \App\Models\Lote::where('estado', 'ACTIVO')
+                    ->where('cantidad_actual', '>', 0)
+                    ->where('fecha_vencimiento', '<=', $hoy)
+                    ->exists();
 
-                    if ($hayVencidos) {
-                        \Illuminate\Support\Facades\Artisan::call('inventario:procesar-vencidos');
-                    }
+                if ($hayVencidos) {
+                    \Illuminate\Support\Facades\Artisan::call('inventario:procesar-vencidos');
                 }
             }
 
